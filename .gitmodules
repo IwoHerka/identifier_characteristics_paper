@@ -1,0 +1,30 @@
+[submodule "parsers/tree-sitter-haskell"]
+	path = parsers/tree-sitter-haskell
+	url = git@github.com:tree-sitter/tree-sitter-haskell.git
+[submodule "parsers/tree-sitter-python"]
+	path = parsers/tree-sitter-python
+	url = git@github.com:tree-sitter/tree-sitter-python.git
+[submodule "parsers/tree-sitter-ocaml"]
+	path = parsers/tree-sitter-ocaml
+	url = git@github.com:tree-sitter/tree-sitter-ocaml.git
+[submodule "parsers/tree-sitter-javascript"]
+	path = parsers/tree-sitter-javascript
+	url = git@github.com:tree-sitter/tree-sitter-javascript.git
+[submodule "parsers/tree-sitter-elixir"]
+	path = parsers/tree-sitter-elixir
+	url = git@github.com:elixir-lang/tree-sitter-elixir.git
+[submodule "parsers/tree-sitter-fortran"]
+	path = parsers/tree-sitter-fortran
+	url = git@github.com:stadelmanma/tree-sitter-fortran.git
+[submodule "parsers/tree-sitter-java"]
+	path = parsers/tree-sitter-java
+	url = git@github.com:tree-sitter/tree-sitter-java.git
+[submodule "parsers/tree-sitter-clojure"]
+	path = parsers/tree-sitter-clojure
+	url = git@github.com:sogaiu/tree-sitter-clojure.git
+[submodule "parsers/tree-sitter-c"]
+	path = parsers/tree-sitter-c
+	url = git@github.com:tree-sitter/tree-sitter-c.git
+[submodule "parsers/tree-sitter-erlang"]
+	path = parsers/tree-sitter-erlang
+	url = git@github.com:WhatsApp/tree-sitter-erlang.git
