@@ -1,3 +1,8 @@
+# Simple script to test language parsing.
+# To run:
+# > poetry shell
+# > python scripts/print -l clojure -i examples/clojure.clj
+
 import argparse
 import os
 

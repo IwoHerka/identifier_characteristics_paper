@@ -7,7 +7,18 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-tree-sitter = "^0.20.4"
+pygments = "^2.17.2"
+pybind11 = "^2.11.1"
+fasttext = {git = "https://github.com/cfculhane/fastText", rev = "main"}
+requests = "^2.31.0"
+pandas = "^2.1.4"
+numpy = "^1.26.3"
+nltk = "^3.8.1"
+openpyxl = "^3.1.2"
+xlsxwriter = "^3.1.9"
+pylibsrcml = "^1.0.0.post1"
+esprima = "^4.0.1"
+scipy = "^1.11.4"
 
 
 [build-system]
