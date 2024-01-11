@@ -19,6 +19,7 @@ xlsxwriter = "^3.1.9"
 pylibsrcml = "^1.0.0.post1"
 esprima = "^4.0.1"
 scipy = "^1.11.4"
+tree-sitter = "^0.20.4"
 
 
 [build-system]
