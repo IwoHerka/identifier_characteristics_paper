@@ -20,6 +20,8 @@ pylibsrcml = "^1.0.0.post1"
 esprima = "^4.0.1"
 scipy = "^1.11.4"
 tree-sitter = "^0.20.4"
+pytest = "^7.4.4"
+black = "^23.12.1"
 
 
 [build-system]
