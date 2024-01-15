@@ -38,8 +38,12 @@ def test_elixir():
     parser = Parser()
     parser.set_language(Language('build/parser_bindings.so', 'elixir'))
     names = extract(parser, 'tests/samples/elixir.ex', extract_elixir)
-    assert names['foo#1'] == ['foo', 'a', 'b', 'c', 'a', 'b', 'c']
-    # TODO
+    assert names['foo#1'] == ['foo', 'arg1', 'arg2', 'arg1', 'arg2']
+    assert names['bar#2'] == ['barr', 'arg1', 'arg2', 'arg1', 'arg2']
+    assert names['func#3'] == ['func',  'x', 'is_number', 'x', 'x']
+    assert names['func#4'] == ['func', 'x', 'is_list', 'x', 'x']
+    assert names['func#5'] == ['func', 'a', 'a']
+    assert names['func#6'] == ['func', 'a', 'b', 'a', 'b']
 
 
 def test_erlang():

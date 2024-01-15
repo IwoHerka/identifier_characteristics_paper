@@ -1,41 +1,50 @@
-// Function Declaration
+// function declaration
 function greet() {
     return "Hello, world!";
 }
 
-// Anonymous Function Expression
+
+// anonymous function expression
 const greetAnon = function() {
     return "Hello, world!";
 };
 
-// Named Function Expression
+
+// named function expression
 const greetNamed = function greetFunction() {
     return "Hello, world!";
 };
 
-// Arrow Function
-// Without parameters
+// arrow function
+// without parameters
 const greetArrow = () => "Hello, world!";
-// With one parameter
+
+
+// with one parameter
 const greetArrowOne = name => "Hello, " + name + "!";
-// With multiple parameters
+
+
+// with multiple parameters
 const greetArrowMultiple = (greeting, name) => greeting + ", " + name + "!";
 
-// Shorthand Method Definition in Object Literal
+
+// shorthand method definition in object literal
 const greeter = {
     greet() {
         return "Hello, world!";
     }
 };
 
-// Generator Function
+
+// generator function
 function* generateSequence() {
     yield 1;
     yield 2;
     return 3;
 }
 
-// Async Function
+
+// async function
 async function fetchData() {
     const data = await fetch('https://api.example.com');
     return data.json();
