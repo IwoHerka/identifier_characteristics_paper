@@ -2,13 +2,14 @@ from tree_sitter import Language
 
 Language.build_library(
     "build/parser_bindings.so", [
-        # This expects tree sitter parsers in parent directory
-        "../tree-sitter-javascript",
-        "../tree-sitter-python",
-        "../tree-sitter-cpp",
-        "../tree-sitter-elixir",
-        "../tree-sitter-erlang",
-        "../tree-sitter-haskell",
-        "../tree-sitter-clojure",
+        "parsers/tree-sitter-c",
+        "parsers/tree-sitter-clojure",
+        "parsers/tree-sitter-elixir",
+        "parsers/tree-sitter-fortran",
+        "parsers/tree-sitter-haskell",
+        "parsers/tree-sitter-java",
+        "parsers/tree-sitter-javascript",
+        "parsers/tree-sitter-ocaml/ocaml",
+        "parsers/tree-sitter-python",
     ]
 )

@@ -1,4 +1,15 @@
 ### Scripts
 
-- `compile_parser.py` - Compiles tree-sitter multi-language parser.
-- `print.py` - Simple script to test and developer language parsing using tree-sitter.
+#### Parsing
+
+Compile tree-sitter parser (`build/parser_bindings.so`):
+
+```bash
+python parsing/compile_parser.py
+```
+
+You can test parsing using `parsing/print.py` script.
+
+#### Tests
+
+To run tests, simply type `pytest`.
