@@ -1,6 +1,6 @@
-### Scripts
+## Scripts
 
-#### Parsing
+### Parsing
 
 Compile tree-sitter parser (`build/parser_bindings.so`):
 
@@ -8,8 +8,9 @@ Compile tree-sitter parser (`build/parser_bindings.so`):
 python parsing/compile_parser.py
 ```
 
-You can test parsing using `parsing/print.py` script.
+You can test parsing using `parsing/print.py` script. Samples are in `tests/samples/`
+directory.
 
-#### Tests
+### Tests
 
 To run tests, simply type `pytest`.
