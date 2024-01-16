@@ -93,10 +93,10 @@ def test_java():
 def test_fortran():
     parser = Parser()
     parser.set_language(Language('build/parser_bindings.so', 'fortran'))
-    names = extract(parser, 'tests/samples/fortran.', extract_fortran)
+    names = extract(parser, 'tests/samples/fortran.f', extract_fortran)
 
 
-def test_agda():
+def test_ocaml():
     parser = Parser()
-    parser.set_language(Language('build/parser_bindings.so', 'agda'))
-    names = extract(parser, 'tests/samples/agda.', extract_agda)
+    parser.set_language(Language('build/parser_bindings.so', 'ocaml'))
+    names = extract(parser, 'tests/samples/ocaml.ml', extract_ocaml)

@@ -1,25 +1,30 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+
 // Standard Function with Return Type and Parameters
 int add(int a, int b) {
     return a + b;
 }
+
 
 // Function with No Return Type (void)
 void sayHello() {
     printf("Hello, world!\n");
 }
 
+
 // Function with No Parameters
 int getRandomNumber() {
     return rand(); // Returns a random number
 }
 
+
 // Function with Void Parameters
 void logTime(void) {
     // Log the current time
 }
+
 
 // Function Returning a Pointer
 int* getArray() {
@@ -28,10 +33,12 @@ int* getArray() {
     return arr;
 }
 
+
 // Function with Pointer Parameters
 void updateValue(int *value) {
     *value = 5;
 }
+
 
 // Variadic Function
 double average(int count, ...) {
@@ -48,6 +55,7 @@ double average(int count, ...) {
     return sum / count;
 }
 
+
 // Function with Array Parameters
 int sumOfElements(int arr[], int size) {
     int sum = 0;
@@ -57,13 +65,16 @@ int sumOfElements(int arr[], int size) {
     return sum;
 }
 
+
 // Inline Function
 inline int max(int a, int b) {
     return (a > b) ? a : b;
 }
 
+
 // Function Prototypes
 int multiply(int a, int b); // Prototype
+							//
 
 // ... other code ...
 
@@ -71,10 +82,12 @@ int multiply(int a, int b) { // Implementation
     return a * b;
 }
 
+
 // Static Function
 static int internalFunction(int a) {
     return a * a;
 }
+
 
 int main() {
     // Test functions here

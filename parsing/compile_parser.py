@@ -7,6 +7,7 @@ Language.build_library(
         "parsers/tree-sitter-elixir",
         "parsers/tree-sitter-fortran",
         "parsers/tree-sitter-haskell",
+        "parsers/tree-sitter-erlang",
         "parsers/tree-sitter-java",
         "parsers/tree-sitter-javascript",
         "parsers/tree-sitter-ocaml/ocaml",
