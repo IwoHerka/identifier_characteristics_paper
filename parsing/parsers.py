@@ -113,6 +113,8 @@ def extract_c(node, acc, ids, in_fun=False, name=None):
 
     if is_defn:
         decl = find_child(node.children, 'function_declarator')
+        if not decl:
+            print(node.text)
         name = f'{str(decl.children[0].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == 'identifier':
@@ -122,7 +124,7 @@ def extract_c(node, acc, ids, in_fun=False, name=None):
         extract_c(child, acc, ids, in_fun or is_defn, name)
 
 
-def find_child(children, node_type, direct=True):
+def find_child(children, node_type, direct=False):
     for child in children:
         if child.type == node_type:
             return child
@@ -165,12 +167,14 @@ def extract_java(node, acc, ids, in_fun=False, name=None):
 
 
 def extract_ocaml(node, acc, ids, in_fun=False, name=None):
-    is_defn = node.type == ''
+    is_defn = not in_fun and node.type == 'let_binding' and find_child(node.children, 'parameter', True)
 
     if is_defn:
-        name = f'{str(node.children.text, encoding="utf-8")}#{next(ids)}'
+        f_name = str(node.children[0].text, encoding="utf-8")
+        name = f'{f_name}#{next(ids)}'
+        # acc[name].append(f_name)
 
-    if in_fun and node.type == '':
+    if in_fun and node.type == 'value_name':
         acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:

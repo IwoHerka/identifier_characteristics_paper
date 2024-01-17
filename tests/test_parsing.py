@@ -40,7 +40,7 @@ def test_elixir():
     names = extract(parser, 'tests/samples/elixir.ex', extract_elixir)
 
     assert names['foo#1'] == ['foo', 'arg1', 'arg2', 'arg1', 'arg2']
-    assert names['bar#2'] == ['barr', 'arg1', 'arg2', 'arg1', 'arg2']
+    assert names['bar#2'] == ['bar', 'arg1', 'arg2', 'arg1', 'arg2']
     assert names['func#3'] == ['func',  'x', 'is_number', 'x', 'x']
     assert names['func#4'] == ['func', 'x', 'is_list', 'x', 'x']
     assert names['func#5'] == ['func', 'a', 'a']
@@ -155,3 +155,11 @@ def test_ocaml():
     parser = Parser()
     parser.set_language(Language('build/parser_bindings.so', 'ocaml'))
     names = extract(parser, 'tests/samples/ocaml.ml', extract_ocaml)
+
+    assert names['add#1'] == ['add', 'x', 'y']
+    assert names['subtract#2'] == ['subtract', 'neg', 'y', 'x', 'neg', 'y']
+    assert names['multiply#3'] == ['multiply', 'inner_multiply', 'm', 'n', 'inner_multiply', 'x', 'y']
+    assert names['factorial#4'] == ['factorial', 'n', 'n', 'factorial', 'n']
+    assert names['abs#5'] == ['abs', 'x', 'x', 'x']
+    assert names['pow#6'] == ['pow', 'exp', 'base', 'pow', 'exp']
+    assert names['gcd#7'] == ['gcd', 'a', 'b', 'gcd', 'b', 'a', 'a']

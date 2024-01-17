@@ -1,3 +1,6 @@
+let x = 10
+
+
 (* 1. Using 'let' *)
 let add x y = x + y
 
