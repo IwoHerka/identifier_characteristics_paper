@@ -5,7 +5,7 @@
 Compile tree-sitter parser (`build/parser_bindings.so`):
 
 ```bash
-python parsing/compile_parser.py
+python parsing/compile.py
 ```
 
 You can test parsing using `parsing/print.py` script. Samples are in `tests/samples/`

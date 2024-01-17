@@ -19,25 +19,25 @@ def unique_id():
 
 def extract(parser, input_file, extract_fn):
     if not os.path.exists(input_file):
-        raise FileNotFoundError(f"file not found: {file_path}")
+        raise FileNotFoundError(f'file not found: {file_path}')
 
-    with open(input_file, "r") as file:
+    with open(input_file, 'r') as file:
         content = file.read()
 
-    tree = parser.parse(bytes(content, "utf-8"))
+    tree = parser.parse(bytes(content, 'utf-8'))
     acc = defaultdict(list)
     extract_fn(tree.root_node, acc, unique_id())
     return acc
 
 
 def extract_clojure(node, acc, ids, in_fun=False, name=None):
-    is_defn = node.type == "list_lit" and node.children[1].text in CLJ_KEYWORDS
+    is_defn = node.type == 'list_lit' and node.children[1].text in CLJ_KEYWORDS
 
     if is_defn:
         name = f'{str(node.children[2].text, encoding="utf-8")}#{next(ids)}'
 
-    if in_fun and node.type in ["sym_name", "sym_ns"] and node.text not in CLJ_KEYWORDS:
-        acc[name].append(str(node.text, encoding="utf-8"))
+    if in_fun and node.type in ['sym_name', 'sym_ns'] and node.text not in CLJ_KEYWORDS:
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_clojure(child, acc, ids, in_fun or is_defn, name)
@@ -63,7 +63,7 @@ def extract_elixir(node, acc, ids, in_fun=False, name=None):
         name = f'{str(node.children[1].children[0].children[0].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == 'identifier' and node.text not in EX_KEYWORDS:
-        acc[name].append(str(node.text, encoding="utf-8"))
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_elixir(child, acc, ids, in_fun or is_defn, name)
@@ -76,7 +76,7 @@ def extract_erlang(node, acc, ids, in_fun=False, name=None):
         name = f'{str(node.children[0].children[0].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == 'var':
-        acc[name].append(str(node.text, encoding="utf-8"))
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_erlang(child, acc, ids, in_fun or is_defn, name)
@@ -89,7 +89,7 @@ def extract_python(node, acc, ids, in_fun=False, name=None):
         name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == 'identifier':
-        acc[name].append(str(node.text, encoding="utf-8"))
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_python(child, acc, ids, in_fun or is_defn, name)
@@ -102,23 +102,35 @@ def extract_javascript(node, acc, ids, in_fun=False, name=None):
         name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == 'identifier':
-        acc[name].append(str(node.text, encoding="utf-8"))
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_javascript(child, acc, ids, in_fun or is_defn, name)
 
 
 def extract_c(node, acc, ids, in_fun=False, name=None):
-    is_defn = node.type == ''
+    is_defn = node.type == 'function_definition'
 
     if is_defn:
-        name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
+        decl = find_child(node.children, 'function_declarator')
+        name = f'{str(decl.children[0].text, encoding="utf-8")}#{next(ids)}'
 
-    if in_fun and node.type == '':
-        acc[name].append(str(node.text, encoding="utf-8"))
+    if in_fun and node.type == 'identifier':
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_c(child, acc, ids, in_fun or is_defn, name)
+
+
+def find_child(children, node_type):
+    for child in children:
+        if child.type == node_type:
+            return child
+        else:
+            found = find_child(child.children, node_type)
+
+            if found:
+                return found
 
 
 def extract_fortran(node, acc, ids, in_fun=False, name=None):
@@ -128,7 +140,7 @@ def extract_fortran(node, acc, ids, in_fun=False, name=None):
         name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == '':
-        acc[name].append(str(node.text, encoding="utf-8"))
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_fotran(child, acc, ids, in_fun or is_defn, name)
@@ -141,20 +153,20 @@ def extract_java(node, acc, ids, in_fun=False, name=None):
         name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == '':
-        acc[name].append(str(node.text, encoding="utf-8"))
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
         extract_java(child, acc, ids, in_fun or is_defn, name)
 
 
-def extract_agda(node, acc, ids, in_fun=False, name=None):
+def extract_ocaml(node, acc, ids, in_fun=False, name=None):
     is_defn = node.type == ''
 
     if is_defn:
         name = f'{str(node.children.text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == '':
-        acc[name].append(str(node.text, encoding="utf-8"))
+        acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
-        extract_agda(child, acc, ids, in_fun or is_defn, name)
+        extract_ocaml(child, acc, ids, in_fun or is_defn, name)

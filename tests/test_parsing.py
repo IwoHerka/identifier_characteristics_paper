@@ -74,8 +74,18 @@ def test_c():
     parser.set_language(Language('build/parser_bindings.so', 'c'))
     names = extract(parser, 'tests/samples/c.c', extract_c)
 
-    # TODO
-    # assert names
+    assert names['add#1'] == ['add', 'a', 'b', 'a', 'b']
+    assert names['sayHello#2'] == ['sayHello', 'printf']
+    assert names['getRandomNumber#3'] == ['getRandomNumber', 'rand']
+    assert names['logTime#4'] == ['logTime']
+    assert names['getArray#5'] == ['getArray', 'arr', 'arr']
+    assert names['updateValue#6'] == ['updateValue', 'value', 'value']
+    assert names['average#7'] == ['average', 'count', 'ap', 'j', 'sum', 'va_start', 'ap', 'count', 'j', 'j', 'count', 'j', 'sum', 'va_arg', 'ap', 'double', 'va_end', 'ap', 'sum', 'count']
+    assert names['sumOfElements#8'] == ['sumOfElements', 'arr', 'size', 'sum', 'i', 'i', 'size', 'i', 'sum', 'arr', 'i', 'sum']
+    assert names['max#9'] == ['max', 'a', 'b', 'a', 'b', 'a', 'b']
+    assert names['multiply#10'] == ['multiply', 'a', 'b', 'a', 'b']
+    assert names['internalFunction#11'] == ['internalFunction', 'a', 'a', 'a']
+    assert names['main#12'] == ['main']
 
 
 def test_python():
