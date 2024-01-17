@@ -19,6 +19,7 @@ contains
     real function multiply(x, y)
         real, intent(in) :: x, y
         multiply = x * y
+        call printMessage('hello')
     end function multiply
 
     ! 4. Recursive function

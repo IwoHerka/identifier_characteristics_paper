@@ -75,7 +75,7 @@ def extract_erlang(node, acc, ids, in_fun=False, name=None):
     if is_defn:
         name = f'{str(node.children[0].children[0].text, encoding="utf-8")}#{next(ids)}'
 
-    if in_fun and node.type == 'var':
+    if in_fun and node.type in ['atom', 'var']:
         acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
@@ -88,7 +88,7 @@ def extract_python(node, acc, ids, in_fun=False, name=None):
     if is_defn:
         name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
 
-    if in_fun and node.type == 'identifier':
+    if in_fun and node.type == 'identifier' and node.parent.type != 'type':
         acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
@@ -122,11 +122,11 @@ def extract_c(node, acc, ids, in_fun=False, name=None):
         extract_c(child, acc, ids, in_fun or is_defn, name)
 
 
-def find_child(children, node_type):
+def find_child(children, node_type, direct=True):
     for child in children:
         if child.type == node_type:
             return child
-        else:
+        elif not direct:
             found = find_child(child.children, node_type)
 
             if found:
@@ -134,25 +134,30 @@ def find_child(children, node_type):
 
 
 def extract_fortran(node, acc, ids, in_fun=False, name=None):
-    is_defn = node.type == ''
+    is_defn = node.type == 'function' and node.children and node.children[0].type == 'function_statement'
+    is_defn = is_defn or (node.type == 'subroutine' and node.children and node.children[0].type == 'subroutine_statement')
 
     if is_defn:
-        name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
+        name_node = find_child(node.children[0].children, 'name', True)
+        f_name = str(name_node.text, encoding="utf-8")
+        name = f'{f_name}#{next(ids)}'
+        acc[name].append(f_name)
 
-    if in_fun and node.type == '':
+    if in_fun and node.type in ['identifier']:
         acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
-        extract_fotran(child, acc, ids, in_fun or is_defn, name)
+        extract_fortran(child, acc, ids, in_fun or is_defn, name)
 
 
 def extract_java(node, acc, ids, in_fun=False, name=None):
-    is_defn = node.type == ''
+    is_defn = node.type == 'method_declaration'
 
     if is_defn:
-        name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
+        name_node = find_child(node.children, 'identifier', True)
+        name = f'{str(name_node.text, encoding="utf-8")}#{next(ids)}'
 
-    if in_fun and node.type == '':
+    if in_fun and node.type == 'identifier':
         acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:

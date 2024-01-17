@@ -20,4 +20,8 @@ directory.
 
 ### Tests
 
-To run tests, simply type `pytest`.
+To run all tests, simply type `pytest`. To run specific language, use:
+
+```
+pytest tests/test_parsing.py -k test_<language>
+```

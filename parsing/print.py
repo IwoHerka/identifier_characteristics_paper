@@ -12,7 +12,8 @@ from tree_sitter import Language, Parser
 
 
 def print_ast(node, depth=0):
-    print(' ' * depth + f'{node.type} {node.text}')
+    text = str(node.text[:20], encoding='utf-8')
+    print('  ' * depth + f'<{node.type}> {text}')
 
     for child in node.children:
         print_ast(child, depth + 1)
@@ -28,11 +29,11 @@ def print_lang(node, extract_fn):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', required=True)
-    parser.add_argument('-i', required=False)
-    parser.add_argument('-ast', required=False)
+    parser.add_argument('-l', '--lang', help='language')
+    parser.add_argument('-i', '--input', help='input file path')
+    parser.add_argument('--ast', action='store_true')
     args = parser.parse_args()
-    input_file = args.i
+    input_file = args.input
 
     if not os.path.exists(input_file):
         raise FileNotFoundError(f"File not found: {file_path}")
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     with open(input_file, 'r') as file:
         content = file.read()
 
-    language = Language('build/parser_bindings.so', args.l)
+    language = Language('build/parser_bindings.so', args.lang)
     parser = Parser()
     parser.set_language(language)
     tree = parser.parse(bytes(content, "utf-8"))
@@ -48,4 +49,4 @@ if __name__ == '__main__':
     if args.ast:
         print_ast(tree.root_node)
     else:
-        print_lang(tree.root_node, globals()[f'extract_{args.l}'])
+        print_lang(tree.root_node, globals()[f'extract_{args.lang}'])

@@ -9,8 +9,7 @@ public_function(Arg) ->
     private_function(Arg).
 
 
-private_function(Arg) ->
-    % private function body.
+private_function(Arg) -> 7.
 
 
 % anonymous functions

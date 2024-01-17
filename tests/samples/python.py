@@ -44,11 +44,11 @@ class MyClass:
 
     @classmethod
     def class_method(cls):
-        return "class method called"
+        return cls
 
     @staticmethod
-    def static_method():
-        return "static method called"
+    def static_method(a):
+        return a
 
 
 # 9. Function with Type Hints (Python 3.5+)
