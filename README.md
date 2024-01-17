@@ -2,6 +2,12 @@
 
 ### Parsing
 
+#### Downloading tree-sitter parsers
+
+```
+git submodule update --init --force --remote
+```
+
 Compile tree-sitter parser (`build/parser_bindings.so`):
 
 ```bash
