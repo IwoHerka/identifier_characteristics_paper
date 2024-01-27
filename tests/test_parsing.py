@@ -92,15 +92,15 @@ def test_javascript():
     parser.set_language(Language('build/parser_bindings.so', 'javascript'))
     names = extract(parser, 'tests/samples/javascript.js', extract_javascript)
 
-    assert names['greet#1'] == ['greet']
-    assert names['greetAnon#2'] == ['greetAnon']
-    assert names['greetNamed#3'] == ['greetNamed']
-    assert names['greetArrow#4'] == ['greetArrow']
-    assert names['greetArrowOne#5'] == ['greetArrowOne', 'name']
-    assert names['greetArrowMultiple#6'] == ['greetArrowMultiple']
-    assert names['greeter#7'] == ['greeter']
-    assert names['generateSequence#8'] == ['generateSequence']
-    assert names['fetchData#9'] == ['fetchData']
+    assert names['greet#1'] == ['greet', 'a', 'a']
+    assert names['greetAnon#2'] == ['greetAnon', 'a', 'a']
+    assert names['greetNamed#3'] == ['greetNamed', 'greetFunction', 'a', 'a']
+    assert names['greetArrow#4'] == ['greetArrow', 'a', 'a']
+    assert names['greetArrowOne#5'] == ['greetArrowOne', 'name', 'name']
+    assert names['greetArrowMultiple#6'] == ['greetArrowMultiple', 'greeting', 'name', 'greeting', 'name']
+    assert names['greet#7'] == ['greet', 'a', 'a']
+    assert names['generateSequence#8'] == ['generateSequence', 'a', 'a']
+    assert names['fetchData#9'] == ['fetchData', 'a', 'data', 'fetch', 'a', 'data']
 
 
 def test_python():

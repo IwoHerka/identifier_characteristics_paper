@@ -101,11 +101,18 @@ def extract_javascript(node, acc, ids, in_fun=False, name=None):
 
     if is_defn:
         if node.type in ['function', 'arrow_function'] and node.parent.type == 'variable_declarator':
-            name = f'{str(node.parent.children[0].text, encoding="utf-8")}#{next(ids)}'
+            f_name = str(node.parent.children[0].text, encoding="utf-8")
+            name = f'{f_name}#{next(ids)}'
+            acc[name].append(f_name)
         elif node.type == 'function_declaration':
-            name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
+            if node.children[0].type == 'async':
+                name = f'{str(node.children[2].text, encoding="utf-8")}#{next(ids)}'
+            else:
+                name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
         elif node.type == 'method_definition':
-            name = f'{str(node.children[0].text, encoding="utf-8")}#{next(ids)}'
+            f_name = str(node.children[0].text, encoding="utf-8")
+            name = f'{f_name}#{next(ids)}'
+            acc[name].append(f_name)
         elif node.type == 'generator_function_declaration':
             name = f'{str(node.children[2].text, encoding="utf-8")}#{next(ids)}'
 
