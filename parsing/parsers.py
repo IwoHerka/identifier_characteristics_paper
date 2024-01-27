@@ -96,10 +96,18 @@ def extract_python(node, acc, ids, in_fun=False, name=None):
 
 
 def extract_javascript(node, acc, ids, in_fun=False, name=None):
-    is_defn = node.type == 'function_declaration'
+    is_defn = node.type in ['function', 'function_declaration', 'arrow_function',
+        'method_definition', 'generator_function_declaration']
 
     if is_defn:
-        name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
+        if node.type in ['function', 'arrow_function'] and node.parent.type == 'variable_declarator':
+            name = f'{str(node.parent.children[0].text, encoding="utf-8")}#{next(ids)}'
+        elif node.type == 'function_declaration':
+            name = f'{str(node.children[1].text, encoding="utf-8")}#{next(ids)}'
+        elif node.type == 'method_definition':
+            name = f'{str(node.children[0].text, encoding="utf-8")}#{next(ids)}'
+        elif node.type == 'generator_function_declaration':
+            name = f'{str(node.children[2].text, encoding="utf-8")}#{next(ids)}'
 
     if in_fun and node.type == 'identifier':
         acc[name].append(str(node.text, encoding='utf-8'))

@@ -16,7 +16,8 @@ def print_ast(node, depth=0):
     print('  ' * depth + f'<{node.type}> {text}')
 
     for child in node.children:
-        print_ast(child, depth + 1)
+        if child.type != 'comment':
+            print_ast(child, depth + 1)
 
 
 def print_lang(node, extract_fn):

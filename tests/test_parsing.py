@@ -87,20 +87,20 @@ def test_c():
     assert names['main#12'] == ['main']
 
 
-# def test_javascript():
-#     parser = Parser()
-#     parser.set_language(Language('build/parser_bindings.so', 'javascript'))
-#     names = extract(parser, 'tests/samples/javascript.js', extract_javascript)
+def test_javascript():
+    parser = Parser()
+    parser.set_language(Language('build/parser_bindings.so', 'javascript'))
+    names = extract(parser, 'tests/samples/javascript.js', extract_javascript)
 
-#     assert names['greet#1'] == ['greet']
-#     assert names['greetAnon#2'] == ['greetAnon']
-#     assert names['greetNamed#3'] == ['greetNamed']
-#     assert names['greetArrow#4'] == ['greetArrow']
-#     assert names['greetArrowOne#5'] == ['greetArrowOne', 'name']
-#     assert names['greetArrowMultiple#6'] == ['greetArrowMultiple']
-#     assert names['greeter#7'] == ['greeter']
-#     assert names['generateSequence#8'] == ['generateSequence']
-#     assert names['fetchData#9'] == ['fetchData']
+    assert names['greet#1'] == ['greet']
+    assert names['greetAnon#2'] == ['greetAnon']
+    assert names['greetNamed#3'] == ['greetNamed']
+    assert names['greetArrow#4'] == ['greetArrow']
+    assert names['greetArrowOne#5'] == ['greetArrowOne', 'name']
+    assert names['greetArrowMultiple#6'] == ['greetArrowMultiple']
+    assert names['greeter#7'] == ['greeter']
+    assert names['generateSequence#8'] == ['generateSequence']
+    assert names['fetchData#9'] == ['fetchData']
 
 
 def test_python():
