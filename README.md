@@ -23,5 +23,21 @@ directory.
 To run all tests, simply type `pytest`. To run specific language, use:
 
 ```
+poetry shell
 pytest tests/test_parsing.py -k test_<language>
+```
+
+### Using parsers from CLI
+
+To run function/name parser for specific file and language:
+
+```
+poetry shell
+python parsing/print.py -i tests/samples/python.py -l python
+```
+
+To print raw AST use option `--ast`:
+
+```
+python parsing/print.py -i tests/samples/python.py -l python --ast
 ```
