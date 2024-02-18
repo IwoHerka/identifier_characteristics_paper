@@ -1,5 +1,11 @@
 ## Scripts
 
+Activate Poetry shell with:
+
+```
+poetry shell
+```
+
 ### Parsing
 
 #### Downloading tree-sitter parsers
@@ -32,7 +38,6 @@ pytest tests/test_parsing.py -k test_<language>
 To run function/name parser for specific file and language:
 
 ```
-poetry shell
 python parsing/print.py -i tests/samples/python.py -l python
 ```
 
