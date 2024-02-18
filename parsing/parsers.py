@@ -60,7 +60,13 @@ def extract_elixir(node, acc, ids, in_fun=False, name=None):
     is_defn = node.type == 'call' and node.children[0].text in [b'def', b'defp']
 
     if is_defn:
-        name = f'{str(node.children[1].children[0].children[0].text, encoding="utf-8")}#{next(ids)}'
+        f_name = str(node.children[1].children[0].children[0].text, encoding="utf-8")
+
+        if '(' in f_name:
+            f_name = f_name.split('(')[0]
+
+        name = f'{f_name}#{next(ids)}'
+
 
     if in_fun and node.type == 'identifier' and node.text not in EX_KEYWORDS:
         acc[name].append(str(node.text, encoding='utf-8'))
