@@ -29,7 +29,6 @@ directory.
 To run all tests, simply type `pytest`. To run specific language, use:
 
 ```
-poetry shell
 pytest tests/test_parsing.py -k test_<language>
 ```
 
