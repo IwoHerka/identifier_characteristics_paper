@@ -45,3 +45,18 @@ To print raw AST use option `--ast`:
 ```
 python parsing/print.py -i tests/samples/python.py -l python --ast
 ```
+
+### Misc. scripts
+
+```bash
+# Count number of directories
+ls -l data/erlang/ | grep -c
+# Delete empty directories
+find data/erlang -type d -empty -delete
+# Count directories recursively
+find data/erlang -type d | wc -l
+# Count files by extension recursively
+find data/erlang/ -type f | awk -F. '/\./ {print $NF}' | sort | uniq -c | sort -nr
+# Remove all files which don't have specified extension
+find data/erlang -type f ! -name '*.erl' -exec rm -f -v {} +
+```

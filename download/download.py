@@ -44,10 +44,10 @@ def clone_repos(repos, dest_dir):
 
         # Check if the repository has already been cloned
         if os.path.exists(dest_repo_path):
-            print(f"Repository {repo_name} already cloned. Skipping...")
+            print(f'Repository {repo_name} already cloned. Skipping...')
             continue
 
-        print(f"Cloning {repo_name} into {dest_repo_path}...")
+        print(f'Cloning {repo_name} into {dest_repo_path}...')
         subprocess.run(["git", "clone", clone_url, dest_repo_path])
 
 
@@ -60,24 +60,21 @@ def list_source_code_files(directory, extensions):
     source_code_files = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith(extensions):
-                full_path = os.path.join(root, file)
-                source_code_files.append(full_path)
+            full_path = os.path.join(root, file)
+            if os.path.exists(full_path):
+                if file.endswith(extensions):
+                    source_code_files.append(full_path)
+
     return source_code_files
 
 
 def count_total_lines(file_paths):
-    """
-    Counts the total number of lines in the provided list of files.
-
-    :param file_paths: A list of file paths.
-    :return: Total number of lines across all files.
-    """
     total_lines = 0
+
     for file_path in file_paths:
         try:
             with open(file_path, "rb") as f:
-                total_lines += sum(1 for _ in f)
+                total_lines += sum(1 for l in f if l.strip())
             # with open(file_path, 'r', encoding='utf-8') as file:
             #     total_lines += sum(1 for line in file)
         except Exception as e:
@@ -88,15 +85,22 @@ def count_total_lines(file_paths):
 
 if __name__ == '__main__':
     # Example usage
-    language = "Erlang"
-    dest_dir = 'data/erlang'
+    # language = 'OCaml'
+    language = 'JavaScript'
+    # dest_dir = 'data/ocaml'
+    dest_dir = 'data/javascript'
+    # ext = '.ml'
+    ext = '.js'
     max_page = 10
+    total_loc = 0
 
     for page in range(1, max_page):
         print(f'Downloading page {page}/{max_page} for {language}')
         download_top_repos(language, dest_dir, 100, page)
-        files = list_source_code_files(dest_dir, '.erl')
 
-        print(f'num files: {len(files)}')
-        print(f'LOC: {count_total_lines(files)}')
+    files = list_source_code_files(dest_dir, ext)
+    total_loc += count_total_lines(files)
+
+    print(f'num files: {len(files)}')
+    print(f'LOC: {total_loc}')
 
