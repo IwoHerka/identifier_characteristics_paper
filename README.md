@@ -60,3 +60,8 @@ find data/erlang/ -type f | awk -F. '/\./ {print $NF}' | sort | uniq -c | sort -
 # Remove all files which don't have specified extension
 find data/erlang -type f ! -name '*.erl' -exec rm -f -v {} +
 ```
+
+```
+touch build/raw/all.txt
+cat build/raw/erlang.txt >> build/raw/all.txt
+```
