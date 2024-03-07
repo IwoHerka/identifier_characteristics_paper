@@ -10,6 +10,10 @@ def list_files(directory):
             yield os.path.join(dirpath, filename)
 
 
+# Go over each file (recursively) in directory with all project for a language
+# and save all names (without functions) to a single file. Used to build training set
+# for word embedding model.
+
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('-l', '--lang', help='language')

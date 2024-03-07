@@ -22,6 +22,9 @@ def extract_words(input_files, output_file, n):
                     if word_count == n:
                         break
 
+# Given a list of files with names for specified languages,
+# generate single training file with equal number of names.
+
 if __name__ == '__main__':
     input_files = [
         'build/raw/c.txt',

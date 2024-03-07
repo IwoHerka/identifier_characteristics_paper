@@ -10,6 +10,7 @@ def list_files(directory):
         for filename in filenames:
             yield os.path.join(dirpath, filename)
 
+# Generates (function, names) CSV per language with all projects.
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()

@@ -17,36 +17,34 @@ from collections import deque
 
 csv.field_size_limit(sys.maxsize)
 
-
-def overall_average(iterable):
-    total_sum = 0
-    count = 0
-    i = 0
-    for value in iterable:
-        i += 1
-        total_sum += value
-        count += 1
-        if i > 100000:
-            break
-    return total_sum / count if count else None
+from utils import overall_mean, overall_median
 
 
-def overall_median(iterable):
-    values = sorted(iterable)  # This requires storing the data temporarily
-    n = len(values)
-    i = 0
-    if n == 0:
-        return None
-    if n % 2 == 1:
-        return values[n//2]
-    else:
-        return (values[n//2 - 1] + values[n//2]) / 2.0
+def draw_one_dimensional_scatter(values):
+    # Generate a fixed x-coordinate with slight random jitter
+    x = np.ones(len(values))
+    
+    plt.figure(figsize=(3, 15))
+    # Plotting the values
+    plt.scatter(x, values)
+    
+    # Adding labels and title for clarity
+    # plt.title('One-dimensional Scatter Plot')
+    plt.yticks(values)  # Optionally, mark the values on the y-axis
+    # plt.xlabel('Fixed Position with Slight Jitter')
+    # plt.ylabel('Values')
+    plt.savefig('build/plots/java_projects.png')
+    
+    # Show the plot
+    plt.show()
 
 
 def unique_pairs(strings):
     return list(combinations(set(strings), 2))
 
 
+# Given a CSV file and a model, go over all function-names pair
+# and yield cosine distance for each word pair within a function.
 def get_median_dist(file_path, model):
     with open(file_path, newline='') as csvfile:
         reader = csv.reader(csvfile)
@@ -97,10 +95,13 @@ def plot_values(values, save_path, use_scatter=False, y_lim=None):
         plt.show()
 
 # TODO: 
-# C is too similar? Count only words longer than ...
-# Train model using equal words/LOC 
-# Remove duplicates from words, special symbols (eg _)
-# Check dist per project
+# [ ] C is too similar? Count only words longer than ...
+# [ ] Train model using equal words/LOC 
+# [ ] Remove duplicates from words, special symbols (eg _)
+# [v] Check dist per project
+# [ ] Languages like java have a lot of repetition? setters, getters, boilerplate = verbose langs
+#     Calculate repetitions and similar strings
+# [ ] Calculate how many words per function/file/project/language have high similairty/low (calculate extreme sets)
 
 CALC_PVALUE = False
 MODEL = 'build/models/all.bin'
