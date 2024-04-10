@@ -50,7 +50,7 @@ python parsing/print.py -i tests/samples/python.py -l python --ast
 
 ```bash
 # Count number of directories
-ls -l data/erlang/ | grep -c
+ls -l data/erlang/ | grep -c ^d
 # Delete empty directories
 find data/erlang -type d -empty -delete
 # Count directories recursively
@@ -59,6 +59,8 @@ find data/erlang -type d | wc -l
 find data/erlang/ -type f | awk -F. '/\./ {print $NF}' | sort | uniq -c | sort -nr
 # Remove all files which don't have specified extension
 find data/erlang -type f ! -name '*.erl' -exec rm -f -v {} +
+# Remove all files which don't have specified extension or are README.md
+find data/python -type f ! \( -name '*.py' -o -name 'README.*' \) -exec rm -f -v {} +
 ```
 
 ```

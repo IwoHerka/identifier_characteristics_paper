@@ -1,5 +1,5 @@
-import os
 import csv
+import os
 
 from parsing.parsers import *
 from tree_sitter import Language, Parser
@@ -10,7 +10,9 @@ def list_files(directory):
         for filename in filenames:
             yield os.path.join(dirpath, filename)
 
-# Generates (function, names) CSV per language with all projects.
+# Generates (function, names) CSV per language with all projects from project
+# download directory.
+# data/<lang>/** -> build/names/<lang>.csv
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()

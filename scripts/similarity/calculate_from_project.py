@@ -1,13 +1,12 @@
-# Script to calculate overall mean and median for a language
-# based on a project report (median for each project).
-
 import argparse
-import fasttext
 
+import fasttext
 from utils import overall_mean, overall_median
 
 MODEL = 'build/models/all.bin'
 
+# Script to calculate overall mean and median for a language
+# based on a project report (median for each project).
 
 if __name__ == '__main__':
     model = fasttext.load_model(MODEL)

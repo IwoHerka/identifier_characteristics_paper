@@ -1,6 +1,13 @@
-import requests
 import os
+import random
 import subprocess
+
+from rich.console import Console
+
+console = Console()
+
+import requests
+
 
 def get_top_repos_by_language(language, num, page):
     url = "https://api.github.com/search/repositories"
@@ -13,10 +20,8 @@ def get_top_repos_by_language(language, num, page):
         "page": page
     }
 
-    # Make the API request
     response = requests.get(url, params=params)
     
-    # Check if the request was successful
     if response.status_code == 200:
         return response.json()['items']
     else:
@@ -44,11 +49,11 @@ def clone_repos(repos, dest_dir):
 
         # Check if the repository has already been cloned
         if os.path.exists(dest_repo_path):
-            print(f'Repository {repo_name} already cloned. Skipping...')
+            console.print(f'\'{repo_name}\' already cloned, skipping', style='yellow')
             continue
 
         print(f'Cloning {repo_name} into {dest_repo_path}...')
-        subprocess.run(["git", "clone", clone_url, dest_repo_path])
+        subprocess.run(["git", "clone", "--depth", "1", clone_url, dest_repo_path])
 
 
 def download_top_repos(language, dest_dir, top_n, page):
@@ -81,24 +86,35 @@ def count_total_lines(file_paths):
 
 
 
-if __name__ == '__main__':
-    # Example usage
-    # language = 'OCaml'
-    language = 'Fortran'
-    # dest_dir = 'data/ocaml'
-    dest_dir = 'data/fortran'
-    # ext = '.ml'
-    ext = '.f'
-    max_page = 10
+def download_all(lang, ext, dest_dir, min_page, max_page, per_page):
     total_loc = 0
 
     for page in range(1, max_page):
-        print(f'Downloading page {page}/{max_page} for {language}')
-        download_top_repos(language, dest_dir, 100, page)
+        console.print(f'Downloading page {page}/{max_page} for {lang}', style='bold red')
+        download_top_repos(lang, dest_dir, per_page, page)
 
-    # files = list_source_code_files(dest_dir, ext)
-    # total_loc += count_total_lines(files)
+    files = list_source_code_files(dest_dir, ext)
+    total_loc += count_total_lines(files)
 
-    # print(f'num files: {len(files)}')
-    # print(f'LOC: {total_loc}')
+    console.print(f'Total number of files: {len(files)}', style='bold red')
+    console.print(f'Total lines of code: {total_loc}', style='bold red')
+    console.bell()
 
+
+# repos = []
+
+# import time
+
+# for i in range(0, 5):
+#     page = get_top_repos_by_language('Python', 100, i)
+#     projects = [p['name'] for p in page]
+#     console.print(len(projects))
+#     repos.extend(projects)
+#     time.sleep(2)
+
+
+# console.print(f'Number of repositories: {len(repos)}')
+# repos = random.sample(repos, 100)
+
+# for repo in repos:
+#     console.print(repo, style='red')

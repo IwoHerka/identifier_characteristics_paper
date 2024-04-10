@@ -1,10 +1,9 @@
-import random
 import argparse
 import os
-
+import random
 from collections import defaultdict
-from tree_sitter import Language, Parser
 
+from tree_sitter import Language, Parser
 
 EX_KEYWORDS = [b'def', b'defp', b'defmacro']
 CLJ_KEYWORDS = [b"defn", b"defn-", b"def", b"defmacro", b"defmethod"]

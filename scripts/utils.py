@@ -1,3 +1,6 @@
+from itertools import combinations
+
+
 def overall_mean(iterable):
     total_sum = 0
     count = 0
@@ -20,3 +23,7 @@ def overall_median(iterable):
         return values[n//2]
     else:
         return (values[n//2 - 1] + values[n//2]) / 2.0
+    
+
+def unique_pairs(strings):
+    return list(combinations(set(strings), 2))

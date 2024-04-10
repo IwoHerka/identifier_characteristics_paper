@@ -5,10 +5,11 @@
 
 import argparse
 import os
+from collections import defaultdict
+
+from tree_sitter import Language, Parser
 
 from parsers import *
-from collections import defaultdict
-from tree_sitter import Language, Parser
 
 
 def print_ast(node, depth=0):

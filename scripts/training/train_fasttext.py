@@ -1,6 +1,6 @@
-import fasttext
 import argparse
 
+import fasttext
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def draw_one_dimensional_scatter(values):
     """
     Draws a one-dimensional scatter plot of the given numeric values.

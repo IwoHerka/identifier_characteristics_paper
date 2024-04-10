@@ -1,8 +1,11 @@
-import os
 import csv
+import os
 
-from parsing.parsers import *
+from ..parsing.parsers import *
 from tree_sitter import Language, Parser
+from rich.console import Console
+
+console = Console()
 
 
 def list_files(directory):
@@ -13,28 +16,26 @@ def list_files(directory):
 # Generates (function, names) CSV per project per language.
 # Output typically in build/projects/<lang>/<project>.csv
 # with format: <function name>, <names>
+# 
+# data/<lang>/** -> build/projects/<lang>/<project>.csv
 
-if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('-l', '--lang')
-    arg_parser.add_argument('-o', '--output_dir')
-    args = arg_parser.parse_args()
-
+def extract_project(lang, output_dir):
     parser = Parser()
-    parser.set_language(Language('build/parser_bindings.so', args.lang))
+    parser.set_language(Language('build/parser_bindings.so', lang))
 
-    for directory in next(os.walk(f'data/{args.lang}'))[1]:
-        out_file = os.path.join(args.output_dir, f'{directory}.csv')
+    for directory in next(os.walk(f'data/{lang}'))[1]:
+        out_file = os.path.join(output_dir, f'{directory}.csv')
 
         with open(out_file, 'w', newline='', encoding='utf-8') as out_file:
             writer = csv.writer(out_file)
-            print(f'Extracting to {out_file}...')
+            console.print(f'Extracting to {out_file}...', style='bold red')
 
-            for file in list_files(f'data/{args.lang}/{directory}'):
+            for file in list_files(f'data/{lang}/{directory}'):
                 try:
-                    fnames = extract(parser, file, globals()[f'extract_{args.lang}'])
+                    fnames = extract(parser, file, globals()[f'extract_{lang}'])
 
                     for fname, names in fnames.items():
+                        console.print(names, style='yellow')
                         writer.writerow([fname, ' '.join(names)]) 
                 except Exception as e: 
                     print(e)

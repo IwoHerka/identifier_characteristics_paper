@@ -1,5 +1,6 @@
 import re
 
+
 def extract_words(input_files, output_file, n):
     word_re = re.compile(r'\b\w+\b')
     

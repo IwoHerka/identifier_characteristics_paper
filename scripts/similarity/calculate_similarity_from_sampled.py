@@ -1,19 +1,18 @@
 import argparse
-import fasttext
-import itertools
 import csv
+import itertools
+import random
 import sys
+from collections import deque
+from itertools import combinations
+
+import fasttext
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import scipy.stats as stats
-import numpy as np
-import matplotlib.pyplot as plt
-import random
 from matplotlib.ticker import ScalarFormatter
-
-from itertools import combinations
 from scipy.spatial.distance import cosine
-
-from collections import deque
 
 csv.field_size_limit(sys.maxsize)
 

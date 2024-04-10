@@ -1,5 +1,6 @@
-import pandas as pd
 import random
+
+import pandas as pd
 
 
 def sample_large_csv(input_filepath, output_filepath, sample_size):
@@ -44,14 +45,16 @@ def sample_large_csv(input_filepath, output_filepath, sample_size):
             # Remove sampled rows from the set to avoid attempting to sample them again
             sampled_indices -= sampled_rows_in_chunk
 
-# Example usage:
-# sample_large_csv('build/names/c.csv', 'build/sampled/c.csv', 500000)
-sample_large_csv('build/names/clojure.csv', 'build/sampled/clojure.csv', 500000)
-sample_large_csv('build/names/elixir.csv', 'build/sampled/elixir.csv', 500000)
-# sample_large_csv('build/names/erlang.csv', 'build/sampled/erlang.csv', 500000)
-# sample_large_csv('build/names/haskell.csv', 'build/sampled/haskell.csv', 500000)
-sample_large_csv('build/names/java.csv', 'build/sampled/java.csv', 500000)
-sample_large_csv('build/names/javascript.csv', 'build/sampled/javascript.csv', 500000)
-# sample_large_csv('build/names/ocaml.csv', 'build/sampled/ocaml.csv', 500000)
-sample_large_csv('build/names/python.csv', 'build/sampled/python.csv', 500000)
+
+if __name__ == '__main__':
+    # Example usage:
+    # sample_large_csv('build/names/c.csv', 'build/sampled/c.csv', 500000)
+    sample_large_csv('build/names/clojure.csv', 'build/sampled/clojure.csv', 500000)
+    sample_large_csv('build/names/elixir.csv', 'build/sampled/elixir.csv', 500000)
+    # sample_large_csv('build/names/erlang.csv', 'build/sampled/erlang.csv', 500000)
+    # sample_large_csv('build/names/haskell.csv', 'build/sampled/haskell.csv', 500000)
+    sample_large_csv('build/names/java.csv', 'build/sampled/java.csv', 500000)
+    sample_large_csv('build/names/javascript.csv', 'build/sampled/javascript.csv', 500000)
+    # sample_large_csv('build/names/ocaml.csv', 'build/sampled/ocaml.csv', 500000)
+    sample_large_csv('build/names/python.csv', 'build/sampled/python.csv', 500000)
 
