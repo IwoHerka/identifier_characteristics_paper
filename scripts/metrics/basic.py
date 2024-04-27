@@ -1,9 +1,11 @@
 import fasttext
+import itertools
 import csv
 import math
 import os
 import re
 import sys
+import random
 from os import path
 from statistics import median
 from Levenshtein import distance as levenshtein_distance
@@ -14,7 +16,7 @@ from .utils import load_abbreviations, split_compound, is_dict_word
 from .cc import get_conciseness_and_consistency
 from .context_coverage import get_context_coverage
 from .external_similarity import get_external_similarity
-from .grammar import get_grammar
+from .grammar import get_grammar, save_grammar
 
 csv.field_size_limit(sys.maxsize)
 console = Console()
@@ -108,12 +110,37 @@ def get_term_entropy(tokens):
     return entropy
 
 
-def get_basic_info(file, abbreviations, model):
+def extract_grammar(base_dir, lang):
+    files = [os.path.join(base_dir, file) for file in list(os.listdir(base_dir))]
+    console.print(f"Detected {len(files)} files", style="red")
+
+    for _ in range(10):
+        random.shuffle(files)
+
+    for file in files[:100]:
+        console.print(f"Processing {file}", style="yellow")
+        project_name = path.basename(file).replace(".csv", "")
+
+        with open(file, newline="") as file:
+            reader = csv.reader(file, delimiter=",")
+            all_names = set()
+
+            for row in reader:
+                if len(all_names) < 10000:
+                    func_name = row[0].split("#")[0]
+                    all_names.add(func_name)
+
+            outfile = f'build/grammars/{lang}/{project_name}.csv'
+            save_grammar(outfile, all_names)
+
+
+def get_basic_info(file, abbreviations, model, project):
     with open(file, newline="") as file:
         reader = csv.reader(file, delimiter=",")
         all_names = set()
         all_multigrams = set()
         all_pairs = set()
+        all_func_names() 
 
         # Per function
         for row in reader:
@@ -133,12 +160,12 @@ def get_basic_info(file, abbreviations, model):
             # console.print(f"Entropy for {func_name} -> {get_term_entropy(names)}", style="yellow")
 
             # TODO: Needs work, cannot be compute for a function in isolation
-            # console.print(f"Context coverage for {func_name} -> {get_context_coverage([names])}", style="yellow")
+
             # console.print(f"Median Levenshtein distance for {func_name} -> {get_median_levenshtein_distance(pairs)}", style="yellow")
 
-            # all_names.update(names)
-            # all_multigrams.update(multigram)
-            # all_pairs.update(pairs)
+            all_names.update(names)
+            all_multigrams.update(multigram)
+            all_pairs.update(pairs)
 
             # return [
             #     get_median_length(names),
@@ -151,6 +178,40 @@ def get_basic_info(file, abbreviations, model):
             # ]
 
             # names = unique_pairs(names)
+
+
+def calc_context_coverage(file, abbreviations, model, project):
+    all_names = []
+
+    with open(file, newline="") as file:
+        reader = csv.reader(file, delimiter=",")
+        # func_to_names = dict()
+        word_to_contexts = dict()
+
+        for row in reader:
+            func_name = row[0].split("#")[0]
+            names = set(row[1].split(" "))
+            names = [list(split_compound(name)) for name in names]
+            names = set(itertools.chain.from_iterable(names))
+
+            all_names.append(names)
+
+            for name in names:
+                if name in word_to_contexts:
+                    word_to_contexts[name].append(names)
+                else:
+                    word_to_contexts[name] = [names]
+
+
+    # print(all_names)
+    # for (name, _names) in word_to_contexts.items():
+    names = word_to_contexts.keys()
+        # print(_names)
+    coverage = get_context_coverage(all_names, names)
+
+    for name, c in coverage:
+        console.print(f"Context coverage for {name} -> {c}", style="yellow")
+        # break
 
 
 def calculate(base_dir, model):
@@ -170,13 +231,16 @@ def calculate(base_dir, model):
     # model = fasttext.load_model(model)
     model = None
 
+    # Check only for grammar
     for file in files:
+        if '.grammar.csv' in file:
+            continue
+
         console.print(f"Processing {file}", style="yellow")
 
-        info = get_basic_info(file, abbreviations, model)
         project_name = path.basename(file).replace(".csv", "")
-
-        break
+        # info = get_basic_info(file, abbreviations, model, project_name)
+        info = calc_context_coverage(file, abbreviations, model, project_name)
 
     # Write summary to language project report CSV
     # with open(f'build/projects/reports/{lang}.csv', 'w', newline="") as summary_file:

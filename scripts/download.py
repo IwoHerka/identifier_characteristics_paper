@@ -1,12 +1,17 @@
 import os
+import shutil
 import random
+import math
 import subprocess
+import requests
+from datetime import datetime
+import csv
 
 from rich.console import Console
+from db.utils import add_repo, update_repo, get_repos
+from scripts.exts import get_exts
 
 console = Console()
-
-import requests
 
 
 def get_top_repos_by_language(language, num, page):
@@ -20,12 +25,14 @@ def get_top_repos_by_language(language, num, page):
         "page": page
     }
 
+    console.print(params)
     response = requests.get(url, params=params)
     
     if response.status_code == 200:
         return response.json()['items']
     else:
         print("Failed to retrieve data:", response.status_code)
+        console.print(response)
         return []
 
 
@@ -38,83 +45,119 @@ def print_repos(repos):
         print("-" * 60)
 
 
-def clone_repos(repos, dest_dir):
+def clone_repos(dest_dir):
+    repos = get_repos()
+
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
     for repo in repos:
-        clone_url = repo['clone_url']
-        repo_name = repo['name']
-        dest_repo_path = os.path.join(dest_dir, repo_name)
+        dest_repo_path = os.path.join(dest_dir, repo.lang, f'{repo.owner}_{repo.name}')
 
         # Check if the repository has already been cloned
         if os.path.exists(dest_repo_path):
-            console.print(f'\'{repo_name}\' already cloned, skipping', style='yellow')
-            continue
+            print(f'\'{repo.name}\' already cloned, skipping')
+        else:
+            print(f'Cloning {repo.name} into {dest_repo_path}...')
+            url = f'https://github.com/{repo.owner}/{repo.name}.git'
+            subprocess.run(["git", "clone", "--depth", "1", url, dest_repo_path])
 
-        print(f'Cloning {repo_name} into {dest_repo_path}...')
-        subprocess.run(["git", "clone", "--depth", "1", clone_url, dest_repo_path])
+        # Read the entire README.md and decide how much to save
+        readme_path = os.path.join(dest_repo_path, 'README.md')
+        readme_content = ""
 
-
-def download_top_repos(language, dest_dir, top_n, page):
-    top_repos = get_top_repos_by_language(language, top_n, page)
-    clone_repos(top_repos, dest_dir)
-
-
-def list_source_code_files(directory, extensions):
-    source_code_files = []
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            full_path = os.path.join(root, file)
-            if os.path.exists(full_path):
-                if file.endswith(extensions):
-                    source_code_files.append(full_path)
-
-    return source_code_files
-
-
-def count_total_lines(file_paths):
-    total_lines = 0
-
-    for file_path in file_paths:
         try:
-            with open(file_path, "rb") as f:
-                total_lines += sum(1 for l in f if l.strip())
-        except Exception as e:
-            print(f"Error reading file {file_path}: {e}")
-    return total_lines
+            with open(readme_path, 'r', encoding='utf-8') as readme_file:
+                lines = readme_file.readlines()
+                if len(lines) < 25:
+                    readme_content = ''.join(lines) 
+                else:
+                    readme_content = ''.join(lines[:25])
+        except IOError:
+            readme_content = None
+            print(f'Error reading README.md for {repo.name}')
+
+        remove_files_by_extension(dest_repo_path, repo.lang)
+        flatten_directory(dest_repo_path)
+        update_repo(repo, path=dest_repo_path, readme=readme_content)
 
 
+def download_lang(lang, dest_dir, num_projects):
+    per_page = min(num_projects, 100)
+    max_page = math.ceil(num_projects / per_page)
+    console.print(f'Looking for repositories, per_page={per_page}, max_page={max_page}')
 
-def download_all(lang, ext, dest_dir, min_page, max_page, per_page):
-    total_loc = 0
+    for page in range(1, max_page+1):
+        console.print(f'Downloading page {page}/{max_page} for {lang}', style='yellow')
+        repos = get_top_repos_by_language(lang, per_page, page)
 
-    for page in range(1, max_page):
-        console.print(f'Downloading page {page}/{max_page} for {lang}', style='bold red')
-        download_top_repos(lang, dest_dir, per_page, page)
-
-    files = list_source_code_files(dest_dir, ext)
-    total_loc += count_total_lines(files)
-
-    console.print(f'Total number of files: {len(files)}', style='bold red')
-    console.print(f'Total lines of code: {total_loc}', style='bold red')
-    console.bell()
-
-
-# repos = []
-
-# import time
-
-# for i in range(0, 5):
-#     page = get_top_repos_by_language('Python', 100, i)
-#     projects = [p['name'] for p in page]
-#     console.print(len(projects))
-#     repos.extend(projects)
-#     time.sleep(2)
+        for repo in repos:
+            console.print(f'Adding {repo["full_name"]}')
+            add_repo(
+                id=repo['id'],
+                name=repo['name'],
+                stars=repo['stargazers_count'],
+                size=repo['size'],
+                lang=lang,
+                owner=repo['owner']['login']
+            )
 
 
-# console.print(f'Number of repositories: {len(repos)}')
-# repos = random.sample(repos, 100)
+def remove_files_by_extension(repo_dir, repo_lang):
+    """
+    Recursively remove files in the given directory that do not have extensions
+    specified for the given language.
 
-# for repo in repos:
-#     console.print(repo, style='red')
+    :param repo_dir: Path to the repository directory
+    :param repo_lang: Programming language of the repository
+    """
+    valid_extensions = get_exts(repo_lang)
+    for root, dirs, files in os.walk(repo_dir, topdown=False):
+        for name in files:
+            file_path = os.path.join(root, name)
+            _, ext = os.path.splitext(name)
+            if ext not in valid_extensions:
+                os.remove(file_path)
+                print(f'Removed: {file_path}')
+
+        # Optionally, remove empty directories after file deletion
+        for name in dirs:
+            dir_path = os.path.join(root, name)
+            if not os.listdir(dir_path):  # Check if the directory is empty
+                shutil.rmtree(dir_path)
+                print(f'Removed empty directory: {dir_path}')
+
+
+def flatten_directory(repo_dir):
+    """
+    Move all files from subdirectories to the root of the repository directory
+    and delete the subdirectories.
+
+    :param repo_dir: Path to the repository directory
+    """
+    root_files = set(os.listdir(repo_dir))  # Get a set of all files/directories in the root
+
+    for root, dirs, files in os.walk(repo_dir, topdown=False):
+        for file in files:
+            source_path = os.path.join(root, file)
+            if root == repo_dir:
+                continue  # Skip files already in the root
+            
+            new_file_name = file
+            counter = 1
+
+            # Ensure the file name is unique in the root directory
+            while new_file_name in root_files:
+                name, ext = os.path.splitext(file)
+                new_file_name = f"{name}_{counter}{ext}"
+                counter += 1
+            
+            destination_path = os.path.join(repo_dir, new_file_name)
+            shutil.move(source_path, destination_path)
+            root_files.add(new_file_name)  # Update root files set
+            print(f"Moved: {source_path} to {destination_path}")
+
+        # Delete the directory if it is not the root
+        if root != repo_dir:
+            os.rmdir(root)
+            print(f"Removed directory: {root}")

@@ -67,3 +67,20 @@ find data/python -type f ! \( -name '*.py' -o -name 'README.*' \) -exec rm -f -v
 touch build/raw/all.txt
 cat build/raw/erlang.txt >> build/raw/all.txt
 ```
+
+```
+shopt -s nocaseglob
+find . -type f ! \( \
+    -name '*.f' -o \
+    -name '*.for' -o \
+    -name '*.ftn' -o \
+    -name '*.f90' -o \
+    -name '*.f95' -o \
+    -name '*.f03' -o \
+    -name '*.f08' -o \
+    -name '*.f15' -o \
+    -name '*.f18' -o \
+    -name '*.fpp' -o \
+    -name 'README.md' \
+\) -exec rm {} +
+```

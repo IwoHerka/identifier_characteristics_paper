@@ -4,10 +4,14 @@ from os import path
 import typer
 from rich.console import Console
 
-from scripts.download import download_all
-from scripts.metrics.basic import calculate as calc_basic
-from scripts.extract.extract_per_project import extract_project
+from scripts.download import download_lang, clone_repos
+from scripts.metrics.basic import calculate as calc_basic, extract_grammar as _extract_grammar
+from scripts.extract.extract_language import extract_language as _extract_language
+from scripts.extract.extract_projects import extract_project as _extract_projects
 from scripts.classify_project import classify as _classify
+from scripts.exts import get_exts
+
+from db.utils import init_session
 
 console = Console()
 
@@ -19,11 +23,31 @@ MODELS_DIR = path.join(BUILD_DIR, 'models')
 PROJECTS_DIR = path.join(BUILD_DIR, 'projects')
 
 @app.command()
-def extract(
+def extract_language(
     lang: str,
-    outdir: str
+    indir: str = typer.Argument(None, help=f'Input project directory'),
+    outdir: str = typer.Argument(None, help=f'Output CSV')
 ):
-    extract_project(lang, outdir)
+    """
+    Perform extraction for specified input project directory to a single
+    file, typically:
+
+    data/<lang>/** -> build/names/<lang>.csv
+    """
+    indir = indir or path.join(DATA_DIR, lang.lower())
+    outdir = outdir or path.join(BUILD_DIR, 'names')
+    _extract_language(lang, indir, outdir)
+
+
+@app.command()
+def extract_projects(
+    lang: str,
+    indir: str = typer.Argument(None, help=f'Input project directory'),
+    outdir: str = typer.Argument(None, help=f'Output directory')
+):
+    indir = indir or path.join(DATA_DIR, lang.lower())
+    outdir = outdir or path.join(PROJECTS_DIR, lang)
+    _extract_projects(lang, indir, outdir)
 
 
 @app.command()
@@ -36,10 +60,15 @@ def classify(
 
 
 @app.command()
+def extract_grammar(lang: str):
+    _extract_grammar(path.join(PROJECTS_DIR, lang), lang)
+
+
+@app.command()
 def calculate_metrics(
     lang: str,
     model: str,
-    indir: str = typer.Argument(None, help=f'Project input directory, {PROJECTS_DIR}/<lang> by default')
+    indir: str = None
 ):
     """
     - [ ] Identifier length\n
@@ -55,33 +84,41 @@ def calculate_metrics(
     - [x] Semantic similarity\n
     - [x] External similarity\n
     - [x] Grammatical patterns\n
-    - [ ] Lexical bad smells\n
     - [^] Word concreteness\n
+    - [ ] Lexical bad smells\n
     """
     indir = indir or path.join(PROJECTS_DIR, lang.lower())
     # model = model or path.join(MODELS_DIR, 'default.bin')
     calc_basic(indir, model)
 
 
+@app.command()
+def download_all(num_projects: int):
+    init_session()
+    langs = ['clojure', 'elixir', 'erlang', 'fortran', 'haskell', 'java',
+             'javascript', 'ocaml', 'python']
+
+    for lang in langs:
+        outdir = path.join(DATA_DIR, lang.lower())
+        download_lang(lang, outdir, num_projects)
+
 
 @app.command()
 def download(
     lang: str, 
-    ext: str, 
+    num_projects: int,
     outdir: str = None, 
-    min_page: int=1, 
-    max_page: int=10,
-    per_page: int=100,
-    sanitize: bool=False
+    sanitize: bool = False
 ):
+    init_session()
     outdir = outdir or path.join(DATA_DIR, lang.lower())
-    download_all(lang, ext, outdir, min_page, max_page, per_page)
+    download_lang(lang, outdir, num_projects)
 
-    if sanitize:
-        console.print('Sanitizing', style='bold red')
-        os.system(f'find {outdir}/ -type f ! -name \'{ext}\' -exec rm -f -v {{}} +')
-        os.system(f'find {outdir}/ -type d -empty -delete')
-        console.print('Done', style='bold red')
+
+@app.command()
+def clone():
+    init_session()
+    clone_repos(DATA_DIR)
 
 
 if __name__ == "__main__":

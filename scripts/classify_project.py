@@ -22,7 +22,6 @@ def read_first_20_lines(file_path):
         return f"An error occurred: {str(e)}"
 
 
-
 def list_readme_files(directory):
     readme_files = []
     
@@ -125,7 +124,6 @@ def classify(lang, outdir, limit):
             console.print(f'{project_name},{response}', style='yellow')
             writer.writerow([project_name] + response.split(','))
             out_file.flush()
-
 
 
 if __name__ == '__main__':
