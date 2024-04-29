@@ -96,7 +96,7 @@ def calculate_metrics(
 def download_all(num_projects: int):
     init_session()
     langs = ['clojure', 'elixir', 'erlang', 'fortran', 'haskell', 'java',
-             'javascript', 'ocaml', 'python']
+             'javascript', 'ocaml', 'python', 'c']
 
     for lang in langs:
         outdir = path.join(DATA_DIR, lang.lower())
@@ -119,6 +119,23 @@ def download(
 def clone():
     init_session()
     clone_repos(DATA_DIR)
+
+
+@app.command()
+def clean(lang: str):
+    exts = set(get_exts(lang))
+    to_remove = []
+
+    for root, dirs, files in os.walk(f'data/{lang}'):
+        for file in files:
+            name, ext = os.path.splitext(file)
+
+            if not ext.lower() in exts and name != 'README':
+                file_path = os.path.join(root, file)
+                to_remove.append(file_path)
+
+    for file in to_remove:
+        os.remove(file)
 
 
 if __name__ == "__main__":

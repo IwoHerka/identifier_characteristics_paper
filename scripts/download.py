@@ -52,6 +52,10 @@ def clone_repos(dest_dir):
         os.makedirs(dest_dir)
 
     for repo in repos:
+        # Optionally:
+        # if repo.path:
+        #     continue
+
         dest_repo_path = os.path.join(dest_dir, repo.lang, f'{repo.owner}_{repo.name}')
 
         # Check if the repository has already been cloned
@@ -76,9 +80,12 @@ def clone_repos(dest_dir):
         except IOError:
             readme_content = None
             print(f'Error reading README.md for {repo.name}')
+        except UnicodeDecodeError:
+            readme_content = "unicode_decode_error"
 
-        remove_files_by_extension(dest_repo_path, repo.lang)
-        flatten_directory(dest_repo_path)
+        # remove_symlinks(dest_repo_path)
+        # remove_files_by_extension(dest_repo_path, repo.lang)
+        # flatten_directory(dest_repo_path)
         update_repo(repo, path=dest_repo_path, readme=readme_content)
 
 
@@ -123,7 +130,7 @@ def remove_files_by_extension(repo_dir, repo_lang):
         # Optionally, remove empty directories after file deletion
         for name in dirs:
             dir_path = os.path.join(root, name)
-            if not os.listdir(dir_path):  # Check if the directory is empty
+            if os.path.exists(dir_path) and not os.listdir(dir_path):  # Check if the directory is empty
                 shutil.rmtree(dir_path)
                 print(f'Removed empty directory: {dir_path}')
 
@@ -131,17 +138,18 @@ def remove_files_by_extension(repo_dir, repo_lang):
 def flatten_directory(repo_dir):
     """
     Move all files from subdirectories to the root of the repository directory
-    and delete the subdirectories.
+    and delete the subdirectories, while ignoring symbolic links.
 
     :param repo_dir: Path to the repository directory
     """
     root_files = set(os.listdir(repo_dir))  # Get a set of all files/directories in the root
 
     for root, dirs, files in os.walk(repo_dir, topdown=False):
+        # Handle files, excluding symlinks
         for file in files:
             source_path = os.path.join(root, file)
-            if root == repo_dir:
-                continue  # Skip files already in the root
+            if root == repo_dir or os.path.islink(source_path):
+                continue  # Skip files already in the root or skip symlinks
             
             new_file_name = file
             counter = 1
@@ -157,7 +165,36 @@ def flatten_directory(repo_dir):
             root_files.add(new_file_name)  # Update root files set
             print(f"Moved: {source_path} to {destination_path}")
 
-        # Delete the directory if it is not the root
-        if root != repo_dir:
-            os.rmdir(root)
-            print(f"Removed directory: {root}")
+        # Delete the directory if it is not the root and not a symlink
+        for name in dirs:
+            dir_path = os.path.join(root, name)
+            if os.path.exists(dir_path) and os.path.islink(dir_path):
+                dirs.remove(name)  # Remove from dirs list to avoid trying to delete it
+                continue  # Skip symlinks
+            
+            if os.path.exists(dir_path) and not os.listdir(dir_path):  # Check if the directory is empty
+                os.rmdir(dir_path)
+                print(f"Removed directory: {dir_path}")
+
+
+def remove_symlinks(dir_path):
+    """
+    Recursively remove all symbolic links in the specified directory.
+
+    :param dir_path: Path to the directory where symlinks will be removed
+    """
+    for root, dirs, files in os.walk(dir_path, topdown=True):
+        # Check and remove symlinked files
+        for file in files:
+            file_path = os.path.join(root, file)
+            if os.path.islink(file_path):
+                os.unlink(file_path)  # Remove the symlinked file
+                print(f"Removed symlink to file: {file_path}")
+
+        # Check and remove symlinked directories
+        for directory in dirs:
+            dir_path = os.path.join(root, directory)
+            if os.path.islink(dir_path):
+                os.unlink(dir_path)  # Remove the symlinked directory
+                print(f"Removed symlink to directory: {dir_path}")
+                dirs.remove(directory)  # Prevent walk from trying to enter a deleted symlink directory
