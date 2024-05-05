@@ -2,11 +2,16 @@ import argparse
 import os
 import random
 from collections import defaultdict
+from rich.console import Console
 
 from tree_sitter import Language, Parser
 
+from .print import print_ast
+
 EX_KEYWORDS = [b'def', b'defp', b'defmacro']
 CLJ_KEYWORDS = [b"defn", b"defn-", b"def", b"defmacro", b"defmethod"]
+
+console = Console()
 
 
 def unique_id():
@@ -18,12 +23,18 @@ def unique_id():
 
 def extract(parser, input_file, extract_fn):
     if not os.path.exists(input_file):
-        raise FileNotFoundError(f'file not found: {file_path}')
+        raise FileNotFoundError(f'file not found: {input_file}')
 
-    with open(input_file, 'r') as file:
-        content = file.read()
+    content = None
+    try:
+        with open(input_file, 'r') as file:
+            content = file.read()
+            content = bytes(content, 'utf-8')
+    except:
+        with open(input_file, 'rb') as file:
+            content = file.read()
 
-    tree = parser.parse(bytes(content, 'utf-8'))
+    tree = parser.parse(content)
     acc = defaultdict(list)
     extract_fn(tree.root_node, acc, unique_id())
     return acc
@@ -133,15 +144,19 @@ def extract_c(node, acc, ids, in_fun=False, name=None):
 
     if is_defn:
         decl = find_child(node.children, 'function_declarator')
-        if not decl:
-            print(node.text)
-        name = f'{str(decl.children[0].text, encoding="utf-8")}#{next(ids)}'
+        if decl:
+            name = f'{str(decl.children[0].text, encoding="utf-8")}'
+        else:
+            is_defn = False
 
     if in_fun and node.type == 'identifier':
         acc[name].append(str(node.text, encoding='utf-8'))
 
     for child in node.children:
-        extract_c(child, acc, ids, in_fun or is_defn, name)
+        try:
+            extract_c(child, acc, ids, in_fun or is_defn, name)
+        except:
+            pass
 
 
 def find_child(children, node_type, direct=False):
@@ -191,7 +206,7 @@ def extract_ocaml(node, acc, ids, in_fun=False, name=None):
 
     if is_defn:
         f_name = str(node.children[0].text, encoding="utf-8")
-        name = f'{f_name}#{next(ids)}'
+        name = f_name #f'{f_name}#{next(ids)}'
         # acc[name].append(f_name)
 
     if in_fun and node.type == 'value_name':

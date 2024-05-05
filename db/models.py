@@ -12,7 +12,7 @@ class Repo(Base):
     size = Column(Integer)
     lang = Column(String)
     owner = Column(String)
-    functions = relationship("Function", back_populates="repo", cascade="all, delete, delete-orphan")
+    # functions = relationship("Function", back_populates="repo", cascade="all, delete, delete-orphan")
 
     # Meta & stats
     type = Column(String, nullable=True, default=None)
@@ -26,6 +26,9 @@ class Function(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
-    code = Column(String)
+    names = Column(String)
     repo_id = Column(Integer, ForeignKey('repos.id')) 
-    repo = relationship("Repo", back_populates="functions")
+    file_name = Column(String)
+    lang = Column(String)
+    order = Column(Integer)
+    grammar = Column(String)

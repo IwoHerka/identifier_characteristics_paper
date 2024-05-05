@@ -8,8 +8,10 @@ HOST = 'localhost'
 PORT = '5432'
 DATABASE = 'namebench'
 
-DATABASE_URL = f'postgresql://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}'
-engine = create_engine(DATABASE_URL)
+def get_engine():
+    DATABASE_URL = f'postgresql://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}'
+    return create_engine(DATABASE_URL)
+
+engine = get_engine()
 
 Base = declarative_base()
-

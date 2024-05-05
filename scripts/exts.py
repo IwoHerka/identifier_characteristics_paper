@@ -1,3 +1,5 @@
+import os
+
 LANG_TO_EXT = dict(
     c=['.c'],
     clojure=['.clj'],

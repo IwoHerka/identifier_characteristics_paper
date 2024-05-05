@@ -5,11 +5,12 @@ import typer
 from rich.console import Console
 
 from scripts.download import download_lang, clone_repos
-from scripts.metrics.basic import calculate as calc_basic, extract_grammar as _extract_grammar
-from scripts.extract.extract_language import extract_language as _extract_language
-from scripts.extract.extract_projects import extract_project as _extract_projects
+from scripts.metrics.basic import calculate as calc_basic
+from scripts.extract.extract_grammar import extract_grammar as _extract_grammar
+from scripts.extract.extract_functions import extract_functions as _extract_functions
 from scripts.classify_project import classify as _classify
 from scripts.exts import get_exts
+from scripts.lang import LANGS
 
 from db.utils import init_session
 
@@ -22,32 +23,11 @@ DATA_DIR = path.basename('data')
 MODELS_DIR = path.join(BUILD_DIR, 'models')
 PROJECTS_DIR = path.join(BUILD_DIR, 'projects')
 
-@app.command()
-def extract_language(
-    lang: str,
-    indir: str = typer.Argument(None, help=f'Input project directory'),
-    outdir: str = typer.Argument(None, help=f'Output CSV')
-):
-    """
-    Perform extraction for specified input project directory to a single
-    file, typically:
-
-    data/<lang>/** -> build/names/<lang>.csv
-    """
-    indir = indir or path.join(DATA_DIR, lang.lower())
-    outdir = outdir or path.join(BUILD_DIR, 'names')
-    _extract_language(lang, indir, outdir)
-
 
 @app.command()
-def extract_projects(
-    lang: str,
-    indir: str = typer.Argument(None, help=f'Input project directory'),
-    outdir: str = typer.Argument(None, help=f'Output directory')
-):
-    indir = indir or path.join(DATA_DIR, lang.lower())
-    outdir = outdir or path.join(PROJECTS_DIR, lang)
-    _extract_projects(lang, indir, outdir)
+def extract_functions():
+    init_session()
+    _extract_functions()
 
 
 @app.command()
@@ -60,8 +40,9 @@ def classify(
 
 
 @app.command()
-def extract_grammar(lang: str):
-    _extract_grammar(path.join(PROJECTS_DIR, lang), lang)
+def extract_grammar():
+    init_session()
+    _extract_grammar()
 
 
 @app.command()
@@ -95,10 +76,8 @@ def calculate_metrics(
 @app.command()
 def download_all(num_projects: int):
     init_session()
-    langs = ['clojure', 'elixir', 'erlang', 'fortran', 'haskell', 'java',
-             'javascript', 'ocaml', 'python', 'c']
 
-    for lang in langs:
+    for lang in LANGS:
         outdir = path.join(DATA_DIR, lang.lower())
         download_lang(lang, outdir, num_projects)
 
