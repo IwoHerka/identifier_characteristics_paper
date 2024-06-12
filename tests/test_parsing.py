@@ -1,4 +1,4 @@
-from parsing.parsers import *
+from scripts.parsing.parsers import *
 from tree_sitter import Language, Parser
 
 
@@ -72,6 +72,8 @@ def test_c():
     parser = Parser()
     parser.set_language(Language('build/parser_bindings.so', 'c'))
     names = extract(parser, 'tests/samples/c.c', extract_c)
+
+    print(names)
 
     assert names['add#1'] == ['add', 'a', 'b', 'a', 'b']
     assert names['sayHello#2'] == ['sayHello', 'printf']

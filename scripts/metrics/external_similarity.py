@@ -1,6 +1,7 @@
 import fasttext
 import numpy as np
 
+
 def get_external_similarity(identifiers, model):
     """
     For each identifier name, find the top three most similar names in the

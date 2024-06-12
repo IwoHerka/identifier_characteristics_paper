@@ -8,6 +8,8 @@ import os
 import csv
 from collections import defaultdict
 
+# TODO: Refactor to pick from database
+
 def count_projects_by_category(directory):
     results = {}
     summary = defaultdict(lambda: defaultdict(int))

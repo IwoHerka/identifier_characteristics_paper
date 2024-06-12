@@ -1,6 +1,8 @@
 import os
 import csv
 
+# TODO: Probably not needed
+
 def load_csv_file(file_path):
     name_grammar_map = {}
     
@@ -23,7 +25,7 @@ def save_to_csv(name_grammar_map, output_path):
             if grammar:  # Checks if grammar is not an empty string
                 writer.writerow([name, grammar])
 
-# Example usage:
-result = load_csv_file('build/grammars.csv')
-print(len(result))
-# save_to_csv(result, 'build/grammars.csv')
+
+# if __name__ == "__main__":
+#     result = load_csv_file('build/grammars.csv')
+#     save_to_csv(result, 'build/grammars.csv')

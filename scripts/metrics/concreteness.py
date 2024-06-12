@@ -186,7 +186,7 @@ if __name__ == '__main__':
     ]
 
     # Train a Word2Vec model just to utilize its internal word count and indexing
-    model = Word2Vec(corpus, window=2, min_count=1, sg=1, workers=1, callbacks=[CallbackAny2Vec()])
+    model = Word2Vec(corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[CallbackAny2Vec()])
 
     # Create an empty co-occurrence matrix
     import numpy as np

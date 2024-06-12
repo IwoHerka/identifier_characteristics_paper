@@ -56,7 +56,7 @@ find data/erlang -type d -empty -delete
 # Count directories recursively
 find data/erlang -type d | wc -l
 # Count files by extension recursively
-find data/erlang/ -type f | awk -F. '/\./ {print $NF}' | sort | uniq -c | sort -nr
+find data/elixir/ -type f | awk -F. '/\./ {print $NF}' | sort | uniq -c | sort -nr
 # Remove all files which don't have specified extension
 find data/erlang -type f ! -name '*.erl' -exec rm -f -v {} +
 # Remove all files which don't have specified extension or are README.md
@@ -83,4 +83,17 @@ find . -type f ! \( \
     -name '*.fpp' -o \
     -name 'README.md' \
 \) -exec rm {} +
+```
+
+### Delete commands
+
+Delete all non-code/README files from current dir
+
+```
+shopt -s nocaseglob
+find . -type f ! \( \
+    -name '*.ex' -o \
+    -name '*.exs' -o \
+    -name 'README.md' \
+\) -exec rm -f -v {} +
 ```

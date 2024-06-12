@@ -109,30 +109,6 @@ def get_term_entropy(tokens):
     return entropy
 
 
-# def extract_grammar(base_dir, lang):
-#     files = [os.path.join(base_dir, file) for file in list(os.listdir(base_dir))]
-#     console.print(f"Detected {len(files)} files", style="red")
-
-#     for _ in range(10):
-#         random.shuffle(files)
-
-#     for file in files[:100]:
-#         console.print(f"Processing {file}", style="yellow")
-#         project_name = path.basename(file).replace(".csv", "")
-
-#         with open(file, newline="") as file:
-#             reader = csv.reader(file, delimiter=",")
-#             all_names = set()
-
-#             for row in reader:
-#                 if len(all_names) < 10000:
-#                     func_name = row[0].split("#")[0]
-#                     all_names.add(func_name)
-
-#             outfile = f'build/grammars/{lang}/{project_name}.csv'
-#             save_grammar(outfile, all_names)
-
-
 def get_basic_info(file, abbreviations, model, project):
     with open(file, newline="") as file:
         reader = csv.reader(file, delimiter=",")

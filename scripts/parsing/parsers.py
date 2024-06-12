@@ -141,6 +141,7 @@ def extract_javascript(node, acc, ids, in_fun=False, name=None):
 
 def extract_c(node, acc, ids, in_fun=False, name=None):
     is_defn = node.type == 'function_definition'
+    print_ast(node)
 
     if is_defn:
         decl = find_child(node.children, 'function_declarator')

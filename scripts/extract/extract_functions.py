@@ -50,6 +50,7 @@ def extract_repo(repo, lang):
 
 
 def extract_functions():
+    # TODO
     for lang in ['c']:#LANGS:
         repos = get_repos_with_no_functions(lang=lang)
 

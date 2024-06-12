@@ -32,3 +32,15 @@ class Function(Base):
     lang = Column(String)
     order = Column(Integer)
     grammar = Column(String)
+
+    # median body length 
+    # num body duplicates
+    # num single letters
+    # casing style?
+    # num abbreviations?
+    # num dictionary words
+    # median levenshtein_distance
+    # body term entropy
+    # body context coverage
+        # get all functions/files (contexts) in which specific word occurs
+        # and calculate similarity of those contexts

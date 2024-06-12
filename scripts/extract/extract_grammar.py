@@ -1,23 +1,24 @@
 import os
 import csv
 import requests
+from multiprocessing import Process
 
 from rich.console import Console
 from db.utils import *
+from db.engine import get_engine
 
 console = Console()
 
 
-def get_grammar(name):
+def get_grammar(name, port):
     try:
-        response = requests.get(f'http://localhost:5001/{name}/FUNCTION')
+        response = requests.get(f'http://localhost:{port}/{name}/FUNCTION')
         return '.'.join(response.json())
     except:
         return ''
 
 
 def save_grammar(outfile, names):
-    print(outfile)
     with open(outfile, 'w', newline='', encoding='utf-8') as outfile:
         writer = csv.writer(outfile)
         console.print(f'Extracting to {outfile}...', style='bold red')
@@ -54,29 +55,42 @@ def save_to_csv(name_grammar_map, output_path):
                 writer.writerow([name, grammar])
 
 
+TAGGER_BASE_PORT = 5000
+
+def get_chunk(values, index, num_processes):
+    chunk_size = len(values) // num_processes
+    start = index * chunk_size
+
+    # For the last chunk, ensure it includes any remaining elements
+    if index == num_processes - 1:
+        end = len(values)
+    else:
+        end = start + chunk_size
+
+    return values[start:end]
+
+
 def extract_grammar():
-    known_grammars = load_csv_file('build/grammars.csv')
-    periodic_update = 0
+    num_processes = 4
+    fn_names = get_distinct_function_names_without_grammar()
 
-    for name in get_unique_function_names():
+    processes = []
+    for i in range(num_processes):
+        chunk = get_chunk(fn_names, i, num_processes)
+        p = Process(target=foo, args=(chunk, TAGGER_BASE_PORT + i))
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
+
+
+# TODO: Clean up
+# More info to console
+def foo(names, port):
+    session = new_session(get_engine())
+
+    for i, name in enumerate(names):
         console.print(f'Checking name: {name}...')
-
-        # if not get_grammar_by_name(name):
-        # console.print(f'Not found, updating grammar, checking cache')
-
-        if name in known_grammars:
-            grammar = known_grammars[name]
-            console.print('Cache hit')
-        else:
-            console.print('Cache miss')
-            grammar = get_grammar(name)
-            known_grammars[name] = grammar
-            update_function_grammar(name, grammar)
-
-        periodic_update += 1
-
-        if periodic_update >= 100:
-            save_to_csv(known_grammars, 'build/grammars.csv')
-            periodic_update = 0
-
-    save_to_csv(known_grammars, 'build/grammars.csv')
+        grammar = get_grammar(name, port)
+        update_function_grammar(session, name, grammar)
