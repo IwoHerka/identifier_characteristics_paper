@@ -1,15 +1,14 @@
+file = "build/unigrams.txt"
 
-
-file = 'build/unigrams.txt'
 
 def load_word_frequencies(file_path):
     # Initialize an empty dictionary to store word frequencies
     word_frequencies = {}
     # Initialize a variable to hold the sum of all occurrences
     total_occurrences = 0
-    
+
     # Open the file at the given path
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         # Read the file line by line
         for line in file:
             # Split each line into a word and its occurrence count
@@ -17,7 +16,7 @@ def load_word_frequencies(file_path):
             # Safety check to ensure there are exactly two parts
             if len(parts) != 2:
                 continue
-            
+
             word, occurrences = parts[0], parts[1]
             try:
                 # Convert the occurrences to an integer
@@ -25,17 +24,18 @@ def load_word_frequencies(file_path):
             except ValueError:
                 # Skip this line if the occurrences part is not an integer
                 continue
-            
+
             # Add or update the word in the dictionary
             if word in word_frequencies:
                 word_frequencies[word] += occurrences
             else:
                 word_frequencies[word] = occurrences
-            
+
             # Add the occurrences to the total sum
             total_occurrences += occurrences
 
     return word_frequencies, total_occurrences
+
 
 # frequencies, total = load_word_frequencies(file)
 # print("Frequencies:", frequencies)
@@ -48,22 +48,22 @@ def load_word_frequencies(file_path):
 
 import numpy as np
 
+
 def cosine_similarity(vector1, vector2):
     # Calculate the dot product of the two vectors
     dot_product = np.dot(vector1, vector2)
-    
+
     # Calculate the norm (magnitude) of each vector
     norm1 = np.linalg.norm(vector1)
     norm2 = np.linalg.norm(vector2)
-    
+
     # Calculate cosine similarity
     if norm1 > 0 and norm2 > 0:
         similarity = dot_product / (norm1 * norm2)
     else:
         similarity = 0  # This handles cases where one vector might be all zeros
-    
-    return similarity
 
+    return similarity
 
 
 def calculate_sample_frequency():
@@ -71,7 +71,7 @@ def calculate_sample_frequency():
     from nltk.corpus import brown
     from nltk.probability import FreqDist
 
-    nltk.download('brown')
+    nltk.download("brown")
 
     # Load the corpus
     words = brown.words()
@@ -83,7 +83,7 @@ def calculate_sample_frequency():
     total_words = len(words)
 
     # Frequency of a specific word, e.g., 'freedom'
-    word_frequency = fdist['load']
+    word_frequency = fdist["load"]
 
     print(word_frequency)
     print(total_words)
@@ -92,10 +92,12 @@ def calculate_sample_frequency():
     probability = word_frequency / total_words
     print(f"The probability of choosing 'load' is {probability}")
 
+
 # --------------------------------------------------------------------------------------
 
 import numpy as np
 from collections import defaultdict, Counter
+
 
 def build_cooccurrence_matrix(corpus, window_size=1):
     # Map each word to a unique index
@@ -110,22 +112,22 @@ def build_cooccurrence_matrix(corpus, window_size=1):
     for i in range(len(corpus)):
         # Get the index of the target word
         target_word_index = word_to_index[corpus[i]]
-        
+
         # Calculate the window boundaries safely
         left_bound = max(i - window_size, 0)
         right_bound = min(i + window_size + 1, len(corpus))
-        
+
         # Count words around the target word within the window
-        window_words = corpus[left_bound:i] + corpus[i+1:right_bound]
+        window_words = corpus[left_bound:i] + corpus[i + 1 : right_bound]
         word_counts = Counter(window_words)
-        
+
         for word, count in word_counts.items():
             cooccurrence_matrix[target_word_index][word_to_index[word]] += count
 
     return vocab, cooccurrence_matrix
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from gensim.models import Word2Vec
     from gensim.models.callbacks import CallbackAny2Vec
 
@@ -186,10 +188,13 @@ if __name__ == '__main__':
     ]
 
     # Train a Word2Vec model just to utilize its internal word count and indexing
-    model = Word2Vec(corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[CallbackAny2Vec()])
+    model = Word2Vec(
+        corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[CallbackAny2Vec()]
+    )
 
     # Create an empty co-occurrence matrix
     import numpy as np
+
     vocab_size = len(model.wv.key_to_index)
     cooccurrence_matrix = np.zeros((vocab_size, vocab_size), dtype=np.int32)
 
@@ -198,15 +203,17 @@ if __name__ == '__main__':
     for sentence in corpus:
         for pos, word in enumerate(sentence):
             word_idx = model.wv.key_to_index[word]
-            for i in range(max(pos - window_size, 0), min(pos + window_size + 1, len(sentence))):
+            for i in range(
+                max(pos - window_size, 0), min(pos + window_size + 1, len(sentence))
+            ):
                 if pos != i:  # Do not count the word itself
                     context_word_idx = model.wv.key_to_index[sentence[i]]
                     cooccurrence_matrix[word_idx][context_word_idx] += 1
 
     vocab = list(model.wv.key_to_index.keys())
 
-    index_word1 = vocab.index('et')  # Replace 'word1' with the actual word
-    index_word2 = vocab.index('ornare')  # Replace 'word2' with the actual word
+    index_word1 = vocab.index("et")  # Replace 'word1' with the actual word
+    index_word2 = vocab.index("ornare")  # Replace 'word2' with the actual word
     vector1 = cooccurrence_matrix[index_word1]
     vector2 = cooccurrence_matrix[index_word2]
     similarity = cosine_similarity(vector1, vector2)

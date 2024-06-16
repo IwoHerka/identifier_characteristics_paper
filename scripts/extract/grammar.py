@@ -6,8 +6,10 @@ import requests
 from rich.console import Console
 
 from db.engine import get_engine
-from db.utils import (get_distinct_function_names_without_grammar,
-                      update_function_grammar)
+from db.utils import (
+    get_distinct_function_names_without_grammar,
+    update_function_grammar,
+)
 
 TAGGER_BASE_PORT = 5000
 NUM_PROCESSES = 4
@@ -30,18 +32,16 @@ class Grammar:
         for p in processes:
             p.join()
 
-
     @staticmethod
     def __get_grammar(name, port):
         """
         Make HTTP request to SCANL tagger to obtain grammar of a function name.
         """
         try:
-            response = requests.get(f'http://localhost:{port}/{name}/FUNCTION')
-            return '.'.join(response.json())
+            response = requests.get(f"http://localhost:{port}/{name}/FUNCTION")
+            return ".".join(response.json())
         except:
-            return ''
-
+            return ""
 
     @staticmethod
     def __get_chunk(values, index, num_processes):
@@ -56,12 +56,11 @@ class Grammar:
 
         return values[start:end]
 
-
     @staticmethod
     def __process(names, port):
         session = new_session(get_engine())
 
         for i, name in enumerate(names):
-            console.print(f'Checking name: {name}...')
+            console.print(f"Checking name: {name}...")
             grammar = __get_grammar(name, port)
             update_function_grammar(session, name, grammar)

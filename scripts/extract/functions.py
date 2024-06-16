@@ -30,14 +30,12 @@ class Functions:
                 results[0].extend(result[0])
                 results[1].extend(result[1])
 
-        console.print(f'Successes: {len(results[0])}, failures: {len(results[1])}')
-
+        console.print(f"Successes: {len(results[0])}, failures: {len(results[1])}")
 
     def __list_files(directory):
         for dirpath, dirnames, filenames in os.walk(directory):
             for filename in filenames:
                 yield os.path.join(dirpath, filename)
-
 
     def __extract_repo(repo, lang):
         successes = []
@@ -45,21 +43,23 @@ class Functions:
 
         session = new_session(get_engine())
         parser = Parser()
-        parser.set_language(Language('build/parser_bindings.so', lang))
-        console.print(f'Processing {repo.name} ({repo.lang}) -> {repo.path}', style='bold red')
+        parser.set_language(Language("build/parser_bindings.so", lang))
+        console.print(
+            f"Processing {repo.name} ({repo.lang}) -> {repo.path}", style="bold red"
+        )
 
         for file in __list_files(repo.path):
-            if 'README.md' in file or not is_ext_valid(lang, file):
+            if "README.md" in file or not is_ext_valid(lang, file):
                 continue
 
-            console.print(f'Processing file: {file}')
+            console.print(f"Processing file: {file}")
             file_order = 1
 
             try:
-                fnames = extract(parser, file, globals()[f'extract_{lang}'])
-                
+                fnames = extract(parser, file, globals()[f"extract_{lang}"])
+
                 for fname, names in fnames.items():
-                    names = ' '.join(names)
+                    names = " ".join(names)
                     add_function(session, fname, names, repo.id, file, lang, file_order)
                     file_order += 1
 
@@ -68,7 +68,7 @@ class Functions:
                 pass
             except FileNotFoundError:
                 pass
-            except Exception as e: 
+            except Exception as e:
                 console.print(file)
                 errors.append(file)
 

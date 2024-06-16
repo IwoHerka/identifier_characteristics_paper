@@ -20,19 +20,19 @@ from scripts.training.train_gensim import GensimTrainer
 console = Console()
 app = typer.Typer()
 
-BUILD_DIR = path.basename('build')
-DATA_DIR = path.basename('data')
-MODELS_DIR = path.join(BUILD_DIR, 'models')
-PROJECTS_DIR = path.join(BUILD_DIR, 'projects')
-FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, 'training_file.txt')
-FASTTEXT_MODEL_FILE = path.join(MODELS_DIR, 'fasttext.bin')
-GENSIM_MODEL_FILE = path.join(MODELS_DIR, 'gensim.model')
+BUILD_DIR = path.basename("build")
+DATA_DIR = path.basename("data")
+MODELS_DIR = path.join(BUILD_DIR, "models")
+PROJECTS_DIR = path.join(BUILD_DIR, "projects")
+FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, "training_file.txt")
+FASTTEXT_MODEL_FILE = path.join(MODELS_DIR, "fasttext.bin")
+GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 
 # TODO: Automate extract functions
 # TODO: Automate prepare training data
 # TODO: Automate training fasttext
 # TODO: Automate calculate similarity
-# TODO: Add function to build co-occurance matrix for all project corpus to 
+# TODO: Add function to build co-occurance matrix for all project corpus to
 # calculate LSI-derived conceptual/relational similarity
 
 
@@ -53,7 +53,7 @@ def similarity(a: str, b: str, model: str):
     """
     Calculate cosine distance for two words using specified model.
     """
-    model = fasttext.load_model(f'build/models/{model}.bin')
+    model = fasttext.load_model(f"build/models/{model}.bin")
     cos = cosine(model.get_word_vector(a), model.get_word_vector(b))
     console.print(cos)
 
@@ -73,11 +73,7 @@ def extract_functions(lang=None):
 
 # Uses OpenAI
 @app.command()
-def classify(
-    lang: str,
-    outdir: str = 'build/classified/',
-    limit: int = 200
-):
+def classify(lang: str, outdir: str = "build/classified/", limit: int = 200):
     _classify(lang, outdir, limit)
 
 
@@ -89,11 +85,7 @@ def extract_grammar():
 
 
 @app.command()
-def calculate_metrics(
-    lang: str,
-    model: str,
-    indir: str = None
-):
+def calculate_metrics(lang: str, model: str, indir: str = None):
     """
     - [ ] Identifier length\n
     - [ ] Number of unique/duplicate identifiers\n
@@ -142,11 +134,11 @@ def clean(lang: str):
     exts = set(get_exts(lang))
     to_remove = []
 
-    for root, dirs, files in os.walk(f'data/{lang}'):
+    for root, dirs, files in os.walk(f"data/{lang}"):
         for file in files:
             name, ext = os.path.splitext(file)
 
-            if not ext.lower() in exts and name != 'README':
+            if not ext.lower() in exts and name != "README":
                 file_path = os.path.join(root, file)
                 to_remove.append(file_path)
 

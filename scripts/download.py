@@ -22,15 +22,15 @@ def get_top_repos_by_language(language, num, page):
         "q": f"language:{language}",
         "sort": "stars",
         "order": "desc",
-        "per_page": num, 
-        "page": page
+        "per_page": num,
+        "page": page,
     }
 
     console.print(params)
     response = requests.get(url, params=params)
-    
+
     if response.status_code == 200:
-        return response.json()['items']
+        return response.json()["items"]
     else:
         console.print("Failed to retrieve data:", response.status_code)
         console.print(response)
@@ -45,7 +45,7 @@ def clone_repos(dest_dir, force=False, only_missing=False):
     repos = get_repos()
 
     if only_missing:
-        repos = repos.filter(Repo.path==None)
+        repos = repos.filter(Repo.path == None)
 
     repos = repos.all()
 
@@ -56,34 +56,34 @@ def clone_repos(dest_dir, force=False, only_missing=False):
         if repo.path and not force:
             continue
 
-        dest_repo_path = os.path.join(dest_dir, repo.lang, f'{repo.owner}_{repo.name}')
+        dest_repo_path = os.path.join(dest_dir, repo.lang, f"{repo.owner}_{repo.name}")
 
         if os.path.exists(dest_repo_path):
             if force:
-                console.print(f'\'{repo.name}\' already cloned, deleting')
+                console.print(f"'{repo.name}' already cloned, deleting")
                 subprocess.run(["rm", "-r", "-f", dest_repo_path])
             else:
-                console.print(f'\'{repo.name}\' already cloned, skipping')
+                console.print(f"'{repo.name}' already cloned, skipping")
                 continue
 
-        console.print(f'Cloning {repo.name} into {dest_repo_path}...')
-        url = f'https://github.com/{repo.owner}/{repo.name}.git'
+        console.print(f"Cloning {repo.name} into {dest_repo_path}...")
+        url = f"https://github.com/{repo.owner}/{repo.name}.git"
         subprocess.run(["git", "clone", "--depth", "1", url, dest_repo_path])
 
         # Read the entire README.md and decide how much to save
-        readme_path = os.path.join(dest_repo_path, 'README.md')
+        readme_path = os.path.join(dest_repo_path, "README.md")
         readme_content = ""
 
         try:
-            with open(readme_path, 'r', encoding='utf-8') as readme_file:
+            with open(readme_path, "r", encoding="utf-8") as readme_file:
                 lines = readme_file.readlines()
                 if len(lines) < 25:
-                    readme_content = ''.join(lines) 
+                    readme_content = "".join(lines)
                 else:
-                    readme_content = ''.join(lines[:25])
+                    readme_content = "".join(lines[:25])
         except IOError:
             readme_content = None
-            print(f'Error reading README.md for {repo.name}')
+            print(f"Error reading README.md for {repo.name}")
         except UnicodeDecodeError:
             readme_content = "unicode_decode_error"
 
@@ -97,19 +97,19 @@ def download_repos(lang, dest_dir, num_projects):
     """
     per_page = min(num_projects, 100)
     max_page = math.ceil(num_projects / per_page)
-    console.print(f'Looking for repositories, per_page={per_page}, max_page={max_page}')
+    console.print(f"Looking for repositories, per_page={per_page}, max_page={max_page}")
 
-    for page in range(1, max_page+1):
-        console.print(f'Downloading page {page}/{max_page} for {lang}', style='yellow')
+    for page in range(1, max_page + 1):
+        console.print(f"Downloading page {page}/{max_page} for {lang}", style="yellow")
         repos = get_top_repos_by_language(lang, per_page, page)
 
         for repo in repos:
             console.print(f'Adding {repo["full_name"]}')
             add_repo(
-                id=repo['id'],
-                name=repo['name'],
-                stars=repo['stargazers_count'],
-                size=repo['size'],
+                id=repo["id"],
+                name=repo["name"],
+                stars=repo["stargazers_count"],
+                size=repo["size"],
                 lang=lang,
-                owner=repo['owner']['login']
+                owner=repo["owner"]["login"],
             )

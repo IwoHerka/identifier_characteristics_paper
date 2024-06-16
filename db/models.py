@@ -4,8 +4,8 @@ from db.engine import Base
 
 
 class Repo(Base):
-    __tablename__ = 'repos'
-    
+    __tablename__ = "repos"
+
     id = Column(Integer, primary_key=True)
     name = Column(String)
     stars = Column(Integer)
@@ -23,18 +23,18 @@ class Repo(Base):
 
 
 class Function(Base):
-    __tablename__ = 'functions'
+    __tablename__ = "functions"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
     names = Column(String)
-    repo_id = Column(Integer, ForeignKey('repos.id')) 
+    repo_id = Column(Integer, ForeignKey("repos.id"))
     file_name = Column(String)
     lang = Column(String)
     order = Column(Integer)
     grammar = Column(String)
 
-    # median body length 
+    # median body length
     # num body duplicates
     # num single letters
     # casing style?
@@ -43,5 +43,5 @@ class Function(Base):
     # median levenshtein_distance
     # body term entropy
     # body context coverage
-        # get all functions/files (contexts) in which specific word occurs
-        # and calculate similarity of those contexts
+    # get all functions/files (contexts) in which specific word occurs
+    # and calculate similarity of those contexts

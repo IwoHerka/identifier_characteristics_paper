@@ -22,7 +22,9 @@ csv.field_size_limit(sys.maxsize)
 
 
 def draw(values, lang):
-    color = np.random.rand(3,)
+    color = np.random.rand(
+        3,
+    )
     x = np.ones(len(values)) + np.random.uniform(-0.01, 0.01, len(values))
     plt.figure(figsize=(3, 6))
     plt.scatter(x, values, c=[color], s=5)

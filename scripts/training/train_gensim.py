@@ -12,16 +12,16 @@ console = Console()
 
 
 class EpochLogger(CallbackAny2Vec):
-    '''Callback to log information about training'''
+    """Callback to log information about training"""
 
     def __init__(self):
         self.epoch = 0
 
     def on_epoch_begin(self, model):
-        console.print(f'Starting epoch {self.epoch}')
+        console.print(f"Starting epoch {self.epoch}")
 
     def on_epoch_end(self, model):
-        console.print(f'Finished epoch {self.epoch}')
+        console.print(f"Finished epoch {self.epoch}")
         self.epoch += 1
 
 
@@ -34,17 +34,12 @@ class GensimTrainer:
             for repo_id in repos:
                 names = get_ordered_function_names(repo_id)
 
-                if names != '':
+                if names != "":
                     corpus.append(names.strip().split())
 
-        console.print('Starting training...')
+        console.print("Starting training...")
         model = Word2Vec(
-            corpus, 
-            window=5, 
-            min_count=1, 
-            sg=1, 
-            workers=1, 
-            callbacks=[EpochLogger()]
+            corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[EpochLogger()]
         )
         model.save(output_path)
-        console.print(f'Done, vocab size: {len(model.wv.key_to_index)}')
+        console.print(f"Done, vocab size: {len(model.wv.key_to_index)}")

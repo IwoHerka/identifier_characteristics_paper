@@ -15,9 +15,9 @@ console = Console()
 
 def read_first_20_lines(file_path):
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             lines = file.readlines()[:25]  # Read the first 20 lines
-            return ''.join(lines)  # Join the lines into a single string
+            return "".join(lines)  # Join the lines into a single string
     except FileNotFoundError:
         return "File not found."
     except Exception as e:
@@ -26,35 +26,37 @@ def read_first_20_lines(file_path):
 
 def list_readme_files(directory):
     readme_files = []
-    
+
     # List all directories in the given directory
-    directories = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
-    
+    directories = [
+        d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))
+    ]
+
     # Iterate through each directory
     for dir_name in directories:
         dir_path = os.path.join(directory, dir_name)
-        
+
         # Get paths of README files directly within the directory
         for file in os.listdir(dir_path):
-            if file.lower().startswith('readme.'):
+            if file.lower().startswith("readme."):
                 readme_files.append((os.path.join(dir_path, file), dir_path))
-    
+
     return readme_files
 
 
 def get_written(csv_file_path):
     first_column_values = set()
-    
-    with open(csv_file_path, mode='r', encoding='utf-8') as file:
+
+    with open(csv_file_path, mode="r", encoding="utf-8") as file:
         reader = csv.reader(file)
-        
+
         # Skip the header if your CSV file has one
         next(reader, None)  # Uncomment this line if your CSV has a header
-        
+
         for row in reader:
             if row:  # Check if the row is not empty
                 first_column_values.add(row[0])
-    
+
     return first_column_values
 
 
@@ -62,21 +64,21 @@ def get_written(csv_file_path):
 def classify(lang, outdir, limit):
     client = OpenAI(api_key=os.environ.get("OPENAI"))
 
-    f = f'{outdir}/{lang}.csv'
+    f = f"{outdir}/{lang}.csv"
     written = get_written(f)
     # console.print(written)
 
     i = 0
 
-    with open(f, 'a', newline='', encoding='utf-8') as out_file:
+    with open(f, "a", newline="", encoding="utf-8") as out_file:
         writer = csv.writer(out_file)
-        a = list_readme_files(f'data/{lang}')
+        a = list_readme_files(f"data/{lang}")
         random.shuffle(a)
         random.shuffle(a)
         random.shuffle(a)
 
         for readme, dir_path in a:
-            project_name = dir_path.split('/')[-1]
+            project_name = dir_path.split("/")[-1]
             readme_head = read_first_20_lines(readme)
 
             i += 1
@@ -87,7 +89,7 @@ def classify(lang, outdir, limit):
             if project_name in written:
                 continue
 
-            console.print(f'#{i}', style='red')
+            console.print(f"#{i}", style="red")
 
             prompt = f"""
             Given a fragment of the README, determine whether project belongs to one of the following categories:
@@ -118,15 +120,15 @@ def classify(lang, outdir, limit):
             chat_completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 # model="gpt-3.5-turbo"
-                model="gpt-4"
+                model="gpt-4",
             )
 
             response = chat_completion.choices[0].message.content
 
-            console.print(f'{project_name},{response}', style='yellow')
-            writer.writerow([project_name] + response.split(','))
+            console.print(f"{project_name},{response}", style="yellow")
+            writer.writerow([project_name] + response.split(","))
             out_file.flush()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     classify()

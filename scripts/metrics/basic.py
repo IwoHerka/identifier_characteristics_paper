@@ -32,37 +32,39 @@ def get_median_duplicates(words):
 def get_single_letters(words):
     pass
 
+
 import nltk
 from nltk.tokenize import RegexpTokenizer
 
+
 # Function to tokenize based on uppercase letters
 def tokenize_identifier(identifier):
-    tokenizer = RegexpTokenizer('[A-Z][^A-Z]*')
+    tokenizer = RegexpTokenizer("[A-Z][^A-Z]*")
     tokens = tokenizer.tokenize(identifier)
     return tokens
 
 
 def get_casing_style(identifier):
     tokens = tokenize_identifier(identifier)
-    if '_' in identifier:
-        return 'snake_case'
-    if '-' in identifier:
-        return 'kebab-case'
+    if "_" in identifier:
+        return "snake_case"
+    if "-" in identifier:
+        return "kebab-case"
 
     if len(tokens) == 1:
         if identifier.islower():
-            return 'lowercase'
+            return "lowercase"
         if identifier[0].isupper() and identifier[1:].islower():
-            return 'PascalCase'
+            return "PascalCase"
         if identifier.isupper():
-            return 'UPPERCASE'
+            return "UPPERCASE"
 
     if identifier[0].islower() and len(tokens) > 1:
-        return 'camelCase'
+        return "camelCase"
     if identifier[0].isupper() and len(tokens) > 1:
-        return 'PascalCase'
+        return "PascalCase"
 
-    return 'unknown'
+    return "unknown"
 
 
 def get_abbreviations(abbreviations, multigrams):
@@ -115,7 +117,7 @@ def get_basic_info(file, abbreviations, model, project):
         all_names = set()
         all_multigrams = set()
         all_pairs = set()
-        all_func_names() 
+        all_func_names()
 
         # Per function
         for row in reader:
@@ -177,11 +179,10 @@ def calc_context_coverage(file, abbreviations, model, project):
                 else:
                     word_to_contexts[name] = [names]
 
-
     # print(all_names)
     # for (name, _names) in word_to_contexts.items():
     names = word_to_contexts.keys()
-        # print(_names)
+    # print(_names)
     coverage = get_context_coverage(all_names, names)
 
     for name, c in coverage:
@@ -200,15 +201,15 @@ def calculate(base_dir, model):
     files = [os.path.join(base_dir, file) for file in list(os.listdir(base_dir))]
     console.print(f"Detected {len(files)} files", style="red")
 
-    abbreviations = load_abbreviations('build/abbreviations.csv')
-    console.print(f'Loaded {len(abbreviations)} abbreviations', style='yellow')
+    abbreviations = load_abbreviations("build/abbreviations.csv")
+    console.print(f"Loaded {len(abbreviations)} abbreviations", style="yellow")
 
     # model = fasttext.load_model(model)
     model = None
 
     # Check only for grammar
     for file in files:
-        if '.grammar.csv' in file:
+        if ".grammar.csv" in file:
             continue
 
         console.print(f"Processing {file}", style="yellow")
@@ -224,4 +225,3 @@ def calculate(base_dir, model):
     #     results = [(file, median) for (file, median) in results if median]
     #     for project, median in sorted(results, key=lambda x: x[1]):
     #         writer.writerow([project, median])
-

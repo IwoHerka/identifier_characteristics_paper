@@ -23,7 +23,6 @@ def get_context_coverage(texts, target_words):
         if target_word not in dictionary.token2id:
             raise ValueError("Target word not found in the texts.")
 
-
         # Find documents that contain the target word
         word_id = dictionary.token2id[target_word]
         # This can be optimized
@@ -37,13 +36,17 @@ def get_context_coverage(texts, target_words):
         sims = []
         for i in range(len(relevant_docs_indices)):
             for j in range(i + 1, len(relevant_docs_indices)):
-                sim = index[lsi[corpus[relevant_docs_indices[i]]]][relevant_docs_indices[j]]
+                sim = index[lsi[corpus[relevant_docs_indices[i]]]][
+                    relevant_docs_indices[j]
+                ]
                 sims.append(sim if sim > 0 else 0)  # Ensure non-negative similarities
 
         # Compute normalized context coverage
         N = len(sims)
         if N > 0:
-            normalized_CC = np.mean(sims)  # Directly calculates the average of similarities
+            normalized_CC = np.mean(
+                sims
+            )  # Directly calculates the average of similarities
             yield (target_word, normalized_CC)
         else:
             yield (target_word, 0)

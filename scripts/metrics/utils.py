@@ -7,8 +7,8 @@ from nltk.corpus import words
 from nltk.stem import WordNetLemmatizer
 
 # TODO
-nltk.download('wordnet')
-nltk.download('omw-1.4')
+nltk.download("wordnet")
+nltk.download("omw-1.4")
 
 # Initialize PyEnchant spell checker
 d = enchant.Dict("en_US")
@@ -35,38 +35,38 @@ nlp = spacy.load("en_core_web_sm")
 # is then processed with lemmatization (using either NLTK or SpaCy) to find its
 # root form and check against a list of known dictionary words.
 
-def is_dict_word(word):
 
+def is_dict_word(word):
     # Check if the word is close to any valid dictionary word
     if d.check(word) or any(d.suggest(word)):
         # Try lemmatizing and checking the word with NLTK
         lemma_nltk = lemmatizer.lemmatize(word.lower())
         if lemma_nltk in word_list:
             return True
-        
+
         # Try lemmatizing and checking the word with SpaCy
         doc = nlp(word.lower())
         lemma_spacy = [token.lemma_ for token in doc][0]  # Get lemma of the first token
         if lemma_spacy in word_list:
             return True
-    
+
     # If neither check passes, the word is not valid
     return False
 
 
 def load_abbreviations(file_path: str) -> set:
     first_column_values = set()
-    
-    with open(file_path, mode='r', newline='') as csvfile:
+
+    with open(file_path, mode="r", newline="") as csvfile:
         reader = csv.reader(csvfile)
-        
+
         # Optionally skip the header if your CSV file has one
         # next(reader, None)  # Uncomment this line if there's a header
-        
+
         for row in reader:
             if row:  # Ensure the row is not empty
                 first_column_values.add(row[0])
-                
+
     return first_column_values
 
 
