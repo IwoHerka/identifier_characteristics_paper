@@ -1,6 +1,8 @@
 # Functions to, given a README file, use ChatGPT4 to classify a project type.
 # Expectes OPENAI key env variable.
 
+# TODO: Add Bard API
+
 import os
 import csv
 import random

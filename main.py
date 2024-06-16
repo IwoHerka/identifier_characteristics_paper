@@ -1,23 +1,21 @@
 import os
 from os import path
 
-import typer
-from rich.console import Console
-
 # similarity():
 import fasttext
+import typer
+from rich.console import Console
 from scipy.spatial.distance import cosine
 
-from scripts.download import download_lang, clone_repos
-from scripts.metrics.basic import calculate as calc_basic
-from scripts.extract.extract_grammar import extract_grammar as _extract_grammar
-from scripts.extract.extract_functions import extract_functions as _extract_functions
-from scripts.classify_project import classify as _classify
-from scripts.training.train_fasttext import train_fasttext
-from scripts.exts import get_exts
-from scripts.lang import LANGS
-
 from db.utils import init_session
+from scripts.classify import classify as _classify
+from scripts.download import clone_repos, download_repos
+from scripts.extract.functions import Functions
+from scripts.extract.grammar import Grammar
+from scripts.lang import LANGS, get_exts
+from scripts.metrics.basic import calculate as calc_basic
+from scripts.training.train_fasttext import train_fasttext
+from scripts.training.train_gensim import GensimTrainer
 
 console = Console()
 app = typer.Typer()
@@ -26,8 +24,9 @@ BUILD_DIR = path.basename('build')
 DATA_DIR = path.basename('data')
 MODELS_DIR = path.join(BUILD_DIR, 'models')
 PROJECTS_DIR = path.join(BUILD_DIR, 'projects')
-FASTTEXT_TRAINING_FILE = path.join(BUILD_DIR, 'training_file.txt')
-FASTTEXT_MODEL_FILE = path.join(BUILD_DIR, 'fasttext.bin')
+FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, 'training_file.txt')
+FASTTEXT_MODEL_FILE = path.join(MODELS_DIR, 'fasttext.bin')
+GENSIM_MODEL_FILE = path.join(MODELS_DIR, 'gensim.model')
 
 # TODO: Automate extract functions
 # TODO: Automate prepare training data
@@ -36,10 +35,17 @@ FASTTEXT_MODEL_FILE = path.join(BUILD_DIR, 'fasttext.bin')
 # TODO: Add function to build co-occurance matrix for all project corpus to 
 # calculate LSI-derived conceptual/relational similarity
 
+
 @app.command()
-def prepare_training_data():
-    corpus = train_fasttext(FASTTEXT_TRAINING_FILE, FASTTEXT_MODEL_FILE)
-    
+def train_fasttext():
+    init_session()
+    train_fasttext(FASTTEXT_TRAINING_FILE, FASTTEXT_MODEL_FILE)
+
+
+@app.command()
+def train_gensim():
+    init_session()
+    GensimTrainer.train(GENSIM_MODEL_FILE)
 
 
 @app.command()
@@ -53,9 +59,16 @@ def similarity(a: str, b: str, model: str):
 
 
 @app.command()
-def extract_functions():
+def extract_functions(lang=None):
+    langs = None
+
+    if lang != None:
+        langs = [lang]
+    else:
+        langs = LANGS
+
     init_session()
-    _extract_functions()
+    Functions.extract(langs)
 
 
 # Uses OpenAI
@@ -72,7 +85,7 @@ def classify(
 @app.command()
 def extract_grammar():
     init_session()
-    _extract_grammar()
+    Grammar.extract()
 
 
 @app.command()
@@ -110,21 +123,20 @@ def download_repo_info(num_projects: int, lang: str = None):
         init_session()
         for lang in LANGS:
             outdir = path.join(DATA_DIR, lang.lower())
-            download_lang(lang, outdir, num_projects)
+            download_repos(lang, outdir, num_projects)
 
     elif lang in LANGS:
         init_session()
-        outdir = outdir or path.join(DATA_DIR, lang.lower())
-        download_lang(lang, outdir, num_projects)
+        outdir = path.join(DATA_DIR, lang.lower())
+        download_repos(lang, outdir, num_projects)
 
 
 @app.command()
-def clone():
+def clone(force: bool = False, missing: bool = False):
     init_session()
-    clone_repos(DATA_DIR)
+    clone_repos(DATA_DIR, force, missing)
 
 
-# Tested and working?
 @app.command()
 def clean(lang: str):
     exts = set(get_exts(lang))

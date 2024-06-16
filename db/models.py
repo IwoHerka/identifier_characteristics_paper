@@ -19,6 +19,7 @@ class Repo(Base):
     desc = Column(String, nullable=True, default=None)
     path = Column(String, nullable=True, default=None)
     readme = Column(String, nullable=True, default=None)
+    # TODO: Downloaded at
 
 
 class Function(Base):

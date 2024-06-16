@@ -1,14 +1,15 @@
 import os
-import sys
 from gensim.models import Word2Vec
 from gensim.models.callbacks import CallbackAny2Vec
-import logging
-import nltk
 
-nltk.download('punkt')
+from rich.console import Console
+from collections import defaultdict
+from db.utils import get_lang_to_repo_ids_map, get_ordered_function_names
+from db.engine import get_engine
 
-# Configure logging
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
+console = Console()
+
 
 class EpochLogger(CallbackAny2Vec):
     '''Callback to log information about training'''
@@ -17,36 +18,33 @@ class EpochLogger(CallbackAny2Vec):
         self.epoch = 0
 
     def on_epoch_begin(self, model):
-        logging.info(f'Starting epoch {self.epoch}')
+        console.print(f'Starting epoch {self.epoch}')
 
     def on_epoch_end(self, model):
-        logging.info(f'Finished epoch {self.epoch}')
+        console.print(f'Finished epoch {self.epoch}')
         self.epoch += 1
 
-def read_corpus(file_list):
-    for file_path in file_list:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            for line in file:
-                yield nltk.word_tokenize(line.lower())
 
-def main(file_list, output_file):
-    # Read corpus from files
-    corpus = list(read_corpus(file_list))
+class GensimTrainer:
+    @staticmethod
+    def train(output_path):
+        corpus = []
 
-    # Train Word2Vec model
-    model = Word2Vec(corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[EpochLogger()])
+        for lang, repos in get_lang_to_repo_ids_map().items():
+            for repo_id in repos:
+                names = get_ordered_function_names(repo_id)
 
-    # Save the model to file
-    model.save(output_file)
-    logging.info(f'Model saved to {output_file}')
+                if names != '':
+                    corpus.append(names.strip().split())
 
-
-if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} <output_model_file> <file1> <file2> ... <fileN>")
-        sys.exit(1)
-
-    output_model_file = sys.argv[1]
-    input_files = sys.argv[2:]
-
-    main(input_files, output_model_file)
+        console.print('Starting training...')
+        model = Word2Vec(
+            corpus, 
+            window=5, 
+            min_count=1, 
+            sg=1, 
+            workers=1, 
+            callbacks=[EpochLogger()]
+        )
+        model.save(output_path)
+        console.print(f'Done, vocab size: {len(model.wv.key_to_index)}')

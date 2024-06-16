@@ -1,24 +1,20 @@
 import os
-
 import fasttext
+
 from collections import defaultdict
-
-from rich.console import Console
-
 from db.utils import *
 from db.engine import get_engine
-
-console = Console()
 
 
 def train_fasttext(training_path, output_path):
     """
-    Build a list of texts, one per project.
+    Build a list of texts, one per project, save it to temporary training file
+    and train fasttext model on it.
     """
     init_session()
 
+    # Prepare training file
     with open(training_path, 'w', encoding='utf-8') as file:
-        # TODO: Possibly some limit? Way of selecting projects?
         for lang, repos in get_lang_to_repo_ids_map().items():
             for repo_id in repos:
                 names = get_ordered_function_names(repo_id)

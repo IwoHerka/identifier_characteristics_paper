@@ -33,14 +33,11 @@ def add_repo(id, name, stars, size, lang, owner):
         session.rollback()
 
 
-def get_repos(lang=None):
-    if lang:
-        return session.query(Repo).filter(Repo.lang==lang)
-    else:
-        return session.query(Repo).all()
+def get_repos():
+    return session.query(Repo)
 
 
-def get_repos_with_no_functions(lang):
+def get_repos_without_functions(lang):
     repos_with_no_functions = session.query(Repo).\
         filter(Repo.lang==lang).\
         outerjoin(Function, Repo.id == Function.repo_id).\
@@ -104,15 +101,11 @@ def get_grammar_by_name(name):
 
 
 def get_distinct_function_names_without_grammar():
-    # Query to select distinct names from the Function table
     names = session.query(Function.name).filter(
         (Function.grammar == None) | (Function.grammar == "")
     ).distinct().all()
     
-    # Convert list of tuples to a set of names
-    unique_names = [name[0] for name in names]
-
-    return unique_names
+    return [name[0] for name in names]
 
 
 def update_function_grammar(session, name, new_grammar):
