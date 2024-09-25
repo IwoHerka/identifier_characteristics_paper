@@ -6,7 +6,7 @@ from db.utils import *
 from db.engine import get_engine
 
 
-def train_fasttext(training_path, output_path):
+def train(training_path, output_path):
     """
     Build a list of texts, one per project, save it to temporary training file
     and train fasttext model on it.

@@ -2,6 +2,7 @@ import os
 import shutil
 import math
 import subprocess
+import time
 import requests
 
 from rich.console import Console
@@ -16,8 +17,11 @@ def get_top_repos_by_language(language, num, page):
     Download info on top 'num' GitHub repositories on specified page for
     specified language.
     """
+    # Retrieve the GitHub token from environment variable
+    token = os.getenv("GITHUB_TOKEN")
+    
+    # Define the URL and parameters for the request
     url = "https://api.github.com/search/repositories"
-
     params = {
         "q": f"language:{language}",
         "sort": "stars",
@@ -26,9 +30,17 @@ def get_top_repos_by_language(language, num, page):
         "page": page,
     }
 
-    console.print(params)
-    response = requests.get(url, params=params)
+    # Set the Authorization header with Bearer token
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
 
+    console.print(params)
+    
+    # Make the request with headers
+    response = requests.get(url, params=params, headers=headers)
+
+    # Handle the response
     if response.status_code == 200:
         return response.json()["items"]
     else:
@@ -94,14 +106,18 @@ def download_repos(lang, dest_dir, num_projects):
     """
     Download top 'num_projects' repositories for specified language and save their
     info to the database.
+
+    Note: This function does not check for IntegrityError - table must be empty!
     """
     per_page = min(num_projects, 100)
     max_page = math.ceil(num_projects / per_page)
+    delay = os.getenv("GITHUB_REQUEST_DELAY", 2)
     console.print(f"Looking for repositories, per_page={per_page}, max_page={max_page}")
 
     for page in range(1, max_page + 1):
         console.print(f"Downloading page {page}/{max_page} for {lang}", style="yellow")
         repos = get_top_repos_by_language(lang, per_page, page)
+        time.sleep(delay)
 
         for repo in repos:
             console.print(f'Adding {repo["full_name"]}')

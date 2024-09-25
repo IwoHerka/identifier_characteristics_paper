@@ -16,7 +16,7 @@ import pandas as pd
 import scipy.stats as stats
 from matplotlib.ticker import ScalarFormatter
 from scipy.spatial.distance import cosine
-from utils import overall_median
+from scripts.utils import overall_median
 
 csv.field_size_limit(sys.maxsize)
 
@@ -75,21 +75,16 @@ def worker_wrapper(file, f):
         return None
 
 
-MODEL = "build/models/all.bin"
 CACHE = False
 
 # Given a CSV file and a model, go over all function-names pair
 # and yield cosine distance for each word pair within a function.
 
-if __name__ == "__main__":
-    model = fasttext.load_model(MODEL)
+def calculate(model, lang):
+    model = fasttext.load_model(model)
     results = []
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-l", "--lang")
-    args = arg_parser.parse_args()
 
     print("Loaded model...")
-    lang = args.lang
     jobs = []
 
     def f(file):

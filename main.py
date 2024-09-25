@@ -14,8 +14,9 @@ from scripts.extract.functions import Functions
 from scripts.extract.grammar import Grammar
 from scripts.lang import LANGS, get_exts
 from scripts.metrics.basic import calculate as calc_basic
-from scripts.training.train_fasttext import train_fasttext
-from scripts.training.train_gensim import GensimTrainer
+from scripts.training.train_fasttext import train as _train_fasttext
+from scripts.training.train_gensim import train as _train_gensim
+from scripts.similarity.calculate_similarity_per_project import calculate
 
 console = Console()
 app = typer.Typer()
@@ -39,17 +40,23 @@ GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 @app.command()
 def train_fasttext():
     init_session()
-    train_fasttext(FASTTEXT_TRAINING_FILE, FASTTEXT_MODEL_FILE)
+    _train_fasttext(FASTTEXT_TRAINING_FILE, FASTTEXT_MODEL_FILE)
 
 
 @app.command()
 def train_gensim():
     init_session()
-    GensimTrainer.train(GENSIM_MODEL_FILE)
+    _train_gensim(GENSIM_MODEL_FILE)
 
 
 @app.command()
-def similarity(a: str, b: str, model: str):
+def calc_similarity(lang: str, model: str = None):
+    model = model or path.join(MODELS_DIR, 'default.bin')
+    calculate(model, lang)
+
+
+@app.command()
+def word_similarity(a: str, b: str, model: str):
     """
     Calculate cosine distance for two words using specified model.
     """
@@ -111,6 +118,15 @@ def calculate_metrics(lang: str, model: str, indir: str = None):
 # Example: python main.py elixir 1000
 @app.command()
 def download_repo_info(num_projects: int, lang: str = None):
+    """
+    Download repository information. Populates 'repos' table. Table must be
+    empty before running this command to avoid integrity error. Command expects
+    GITHUB_TOKEN env variable to contain valid Github's personal access token.
+    As of 09/24, current rate limit for repository search endpoint for
+    authorized users is 30 requests per minute. In case of 403's check if rate
+    limit changed and adjust GITHUB_REQUEST_DELAY which specifies time in seconds
+    to wait between requests (defaults to 2).
+    """
     if lang == None:
         init_session()
         for lang in LANGS:

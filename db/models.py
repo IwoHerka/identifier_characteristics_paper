@@ -22,6 +22,9 @@ class Repo(Base):
     # TODO: Downloaded at
 
 
+# class File?
+
+
 class Function(Base):
     __tablename__ = "functions"
 
@@ -33,6 +36,9 @@ class Function(Base):
     lang = Column(String)
     order = Column(Integer)
     grammar = Column(String)
+
+    # median similarity
+    # mean similarity
 
     # median body length
     # num body duplicates

@@ -25,21 +25,19 @@ class EpochLogger(CallbackAny2Vec):
         self.epoch += 1
 
 
-class GensimTrainer:
-    @staticmethod
-    def train(output_path):
-        corpus = []
+def train(output_path):
+    corpus = []
 
-        for lang, repos in get_lang_to_repo_ids_map().items():
-            for repo_id in repos:
-                names = get_ordered_function_names(repo_id)
+    for lang, repos in get_lang_to_repo_ids_map().items():
+        for repo_id in repos:
+            names = get_ordered_function_names(repo_id)
 
-                if names != "":
-                    corpus.append(names.strip().split())
+            if names != "":
+                corpus.append(names.strip().split())
 
-        console.print("Starting training...")
-        model = Word2Vec(
-            corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[EpochLogger()]
-        )
-        model.save(output_path)
-        console.print(f"Done, vocab size: {len(model.wv.key_to_index)}")
+    console.print("Starting training...")
+    model = Word2Vec(
+        corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[EpochLogger()]
+    )
+    model.save(output_path)
+    console.print(f"Done, vocab size: {len(model.wv.key_to_index)}")
