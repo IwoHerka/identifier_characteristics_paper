@@ -46,6 +46,16 @@ To print raw AST use option `--ast`:
 python parsing/print.py -i tests/samples/python.py -l python --ast
 ```
 
+### Setup
+
+1. Copy `.env.example` to `.env` and set `GITHUB_TOKEN` to your Github token
+2. Run `set -o allexport; source .env; set +o allexport` to load environment variables
+3. Download repo info with `download-repo-info` command
+4. Clone repos with `clone` command
+5. Clean repos with `clean` command
+6. Extract functions with `extract` command
+7. Extract grammar with `extract-grammar` command
+
 ### Misc. scripts
 
 ```bash

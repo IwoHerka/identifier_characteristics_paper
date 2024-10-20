@@ -17,7 +17,7 @@ from scripts.metrics.basic import calculate as calc_basic
 from scripts.training.train_fasttext import train as _train_fasttext
 from scripts.training.train_gensim import train as _train_gensim
 from scripts.similarity.calculate_similarity_per_project import calculate
-
+from scripts.metrics.term_entropy import get_term_entropy
 console = Console()
 app = typer.Typer()
 
@@ -95,62 +95,88 @@ def extract_grammar():
 def calculate_metrics(lang: str, model: str, indir: str = None):
     """
     - [ ] Identifier length\n
+    - [ ] Syllable count\n
+    - [ ] Soft word count\n
     - [ ] Number of unique/duplicate identifiers\n
     - [ ] Number of single letter identifiers\n
     - [ ] Most common casing style\n
     - [x] Percent of abbreviations\n
     - [x] Percent of dictionary words\n
-    - [x] Levenshtein distance\n
-    - [x] Term entropy\n
-    - [x] Conciseness & consistency violations\n
-    - [x] Context coverage\n
-    - [x] Semantic similarity\n
     - [x] External similarity\n
     - [x] Grammatical patterns\n
-    - [^] Word concreteness\n
+    - [x] Term entropy\n
+    - [?] Context coverage\n
+    - [?] Conciseness & consistency violations\n
+    - [?] Semantic similarity\n
+    - [?] Word concreteness\n
+    - [?] Levenshtein distance\n
     - [ ] Lexical bad smells\n
+    - [ ] Flesch–Kincaid readability\n
+    - [ ] Lexical diversity (TTR)\n
     """
     indir = indir or path.join(PROJECTS_DIR, lang.lower())
     # model = model or path.join(MODELS_DIR, 'default.bin')
     calc_basic(indir, model)
 
 
-# Example: python main.py elixir 1000
+@app.command()
+def calc_term_entropy():
+    init_session()
+    get_term_entropy(257787813)
+
+
+# TODO: Only download repos that are not already downloaded
+# TODO: Add option to download only missing up to given number of projects
+# TODO: Rename to seed?
 @app.command()
 def download_repo_info(num_projects: int, lang: str = None):
     """
     Download repository information. Populates 'repos' table. Table must be
-    empty before running this command to avoid integrity error. Command expects
-    GITHUB_TOKEN env variable to contain valid Github's personal access token.
-    As of 09/24, current rate limit for repository search endpoint for
-    authorized users is 30 requests per minute. In case of 403's check if rate
-    limit changed and adjust GITHUB_REQUEST_DELAY which specifies time in seconds
-    to wait between requests (defaults to 2).
+    empty for a given language before running this command to avoid integrity
+    error. Command expects GITHUB_TOKEN env variable to contain valid Github's
+    personal access token.  As of 09/24, current rate limit for repository
+    search endpoint for authorized users is 30 requests per minute. In case of
+    403's check if rate limit changed and adjust GITHUB_REQUEST_DELAY which
+    specifies time in seconds to wait between requests (defaults to 2). Example:
+
+        python main.py download-repo-info 100 --lang=elixir
     """
+    init_session()
+
     if lang == None:
-        init_session()
         for lang in LANGS:
             outdir = path.join(DATA_DIR, lang.lower())
             download_repos(lang, outdir, num_projects)
 
     elif lang in LANGS:
-        init_session()
         outdir = path.join(DATA_DIR, lang.lower())
         download_repos(lang, outdir, num_projects)
 
 
+
+# TODO: Check repos state, fix command
+# TODO: Remove repos that failed to cloned and fix
 @app.command()
-def clone(force: bool = False, missing: bool = False):
+def clone(force: bool = False, only_missing: bool = False):
+    """
+    Clone repositories from Github.
+    """
     init_session()
-    clone_repos(DATA_DIR, force, missing)
+    clone_repos(DATA_DIR, force, only_missing)
 
 
 @app.command()
 def clean(lang: str):
+    """
+    Remove non-code files from project directories for a given language.
+    Command will print summary of files to be removed and ask for confirmation. Example:
+
+        python main.py clean elixir
+    """
     exts = set(get_exts(lang))
     to_remove = []
 
-    for root, dirs, files in os.walk(f"data/{lang}"):
+    for root, _, files in os.walk(f"data/{lang}"):
         for file in files:
             name, ext = os.path.splitext(file)
 
@@ -158,8 +184,33 @@ def clean(lang: str):
                 file_path = os.path.join(root, file)
                 to_remove.append(file_path)
 
-    for file in to_remove:
-        os.remove(file)
+    if not to_remove:
+        console.print("No files to remove")
+        return
+
+    # Count files by extension
+    ext_counts = {}
+    for file_path in to_remove:
+        _, ext = os.path.splitext(file_path)
+        ext = ext.lower()  # Normalize extensions to lowercase
+        ext_counts[ext] = ext_counts.get(ext, 0) + 1
+
+    console.print("\nSummary of files to be removed:")
+    for ext, count in sorted(ext_counts.items(), key=lambda x: x[1]):
+        console.print(f"{ext}: {count}")
+
+    console.print(f"\nAccepted extensions: {exts}")
+    console.print(f"\nTotal files to remove: {len(to_remove)}, continue? (Y/n)")
+
+    if console.input() == 'Y':
+        console.print("Removing files...")
+
+        for file in to_remove:
+            os.remove(file)
+
+        console.print("Done")
+    else:
+        console.print("Aborting...")
 
 
 if __name__ == "__main__":

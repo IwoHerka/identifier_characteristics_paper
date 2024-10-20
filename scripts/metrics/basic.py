@@ -1,11 +1,8 @@
 import fasttext
 import itertools
 import csv
-import math
 import os
-import re
 import sys
-import random
 from os import path
 from statistics import median
 from Levenshtein import distance as levenshtein_distance
@@ -16,6 +13,7 @@ from .utils import load_abbreviations, split_compound, is_dict_word
 from .cc import get_conciseness_and_consistency
 from .context_coverage import get_context_coverage
 from .external_similarity import get_external_similarity
+from .term_entropy import get_term_entropy
 
 csv.field_size_limit(sys.maxsize)
 console = Console()
@@ -98,26 +96,13 @@ def get_median_levenshtein_distance(word_pairs):
     return median(distances)
 
 
-def get_term_entropy(tokens):
-    if not tokens:
-        return 0
-
-    frequency = {}
-    for token in tokens:
-        frequency[token] = frequency.get(token, 0) + 1
-
-    probabilities = [f / len(tokens) for f in frequency.values()]
-    entropy = -sum(p * math.log2(p) for p in probabilities)
-    return entropy
-
-
 def get_basic_info(file, abbreviations, model, project):
     with open(file, newline="") as file:
         reader = csv.reader(file, delimiter=",")
         all_names = set()
         all_multigrams = set()
         all_pairs = set()
-        all_func_names()
+        all_func_names = set()
 
         # Per function
         for row in reader:
@@ -126,7 +111,7 @@ def get_basic_info(file, abbreviations, model, project):
             pairs = unique_pairs(names)
             multigrams = [split_compound(name) for name in names]
 
-            # console.print(row[0])
+            console.print(row[0])
             # console.print(f"Grammar for {func_name} -> {get_grammar(func_name)}", style="yellow")
             # console.print(f"Casing for {func_name} -> {get_casing_style(func_name)}", style="yellow")
             # console.print(f"Ext. similarity for {func_name} -> {get_external_similarity(names, model)}", style="yellow")
@@ -134,14 +119,14 @@ def get_basic_info(file, abbreviations, model, project):
             # console.print(f"Num. of abbreviations for {func_name} -> {get_abbreviations(abbreviations, multigrams)}", style="yellow")
             # conc_violations, cons_violations = get_conciseness_and_consistency(multigrams)
             # console.print(f"C&C for {func_name} -> {len(conc_violations)}, {len(cons_violations)}", style="yellow")
-            # console.print(f"Entropy for {func_name} -> {get_term_entropy(names)}", style="yellow")
+            console.print(f"Entropy for {func_name} -> {get_term_entropy(names)}", style="yellow")
 
             # TODO: Needs work, cannot be compute for a function in isolation
 
             # console.print(f"Median Levenshtein distance for {func_name} -> {get_median_levenshtein_distance(pairs)}", style="yellow")
 
             all_names.update(names)
-            all_multigrams.update(multigram)
+            #all_multigrams.update(multigram)
             all_pairs.update(pairs)
 
             # return [
@@ -204,8 +189,8 @@ def calculate(base_dir, model):
     abbreviations = load_abbreviations("build/abbreviations.csv")
     console.print(f"Loaded {len(abbreviations)} abbreviations", style="yellow")
 
-    # model = fasttext.load_model(model)
-    model = None
+    model = fasttext.load_model(model)
+    #model = None
 
     # Check only for grammar
     for file in files:
@@ -215,8 +200,8 @@ def calculate(base_dir, model):
         console.print(f"Processing {file}", style="yellow")
 
         project_name = path.basename(file).replace(".csv", "")
-        # info = get_basic_info(file, abbreviations, model, project_name)
-        info = calc_context_coverage(file, abbreviations, model, project_name)
+        info = get_basic_info(file, abbreviations, model, project_name)
+        #info = calc_context_coverage(file, abbreviations, model, project_name)
 
     # Write summary to language project report CSV
     # with open(f'build/projects/reports/{lang}.csv', 'w', newline="") as summary_file:

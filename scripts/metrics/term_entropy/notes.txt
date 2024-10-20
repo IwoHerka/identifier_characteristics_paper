@@ -1,0 +1,29 @@
+Normalization of entropy scores
+
+Entropy scores are normalized by dividing each
+identifier's entropy by the maximum entropy score found within the same set of
+identifiers. This scales the scores to a range of 0 to 1, allowing for easy
+comparison across different identifiers or repositories.  
+
+Normalization is necessary to make meaningful comparisons between identifiers or
+repositories, especially when they differ in the number of functions and coding
+styles. Without normalization, raw entropy scores may be misleading due to
+variations in repository size and identifier usage.  Contextual Understanding:
+Normalization provides a context for interpreting entropy scores. It allows you
+to see how scattered an identifier is across functions relative to the best-case
+scenario within that set.
+
+A high normalized entropy score (close to 1) indicates that an identifier is
+well-distributed across many functions. This suggests that the identifier is
+used consistently in various contexts.
+
+A low normalized entropy score (close to 0) indicates that an identifier is
+concentrated in a few functions. This may suggest limited usage or scope for the
+identifier, which could lead to confusion or reduced readability if the
+identifier is not commonly associated with its intended purpose.
+
+Normalization is a crucial step for effective comparison of identifier usage
+across repositories, helping to standardize the analysis and interpretation of
+entropy scores.  High entropy indicates better distribution and versatility of
+identifiers, while low entropy indicates concentrated usage, which may raise
+concerns about code clarity and maintainability.

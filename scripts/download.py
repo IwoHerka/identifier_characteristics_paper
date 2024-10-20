@@ -17,7 +17,6 @@ def get_top_repos_by_language(language, num, page):
     Download info on top 'num' GitHub repositories on specified page for
     specified language.
     """
-    # Retrieve the GitHub token from environment variable
     token = os.getenv("GITHUB_TOKEN")
     
     # Define the URL and parameters for the request
@@ -35,17 +34,12 @@ def get_top_repos_by_language(language, num, page):
         "Authorization": f"Bearer {token}"
     }
 
-    console.print(params)
-    
-    # Make the request with headers
     response = requests.get(url, params=params, headers=headers)
 
-    # Handle the response
     if response.status_code == 200:
         return response.json()["items"]
     else:
         console.print("Failed to retrieve data:", response.status_code)
-        console.print(response)
         return []
 
 

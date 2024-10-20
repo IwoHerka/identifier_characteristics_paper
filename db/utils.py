@@ -73,6 +73,10 @@ def get_functions():
     return session.query(Function).all()
 
 
+def get_functions_for_repo(repo_id):
+    return session.query(Function).filter_by(repo_id=repo_id).all()
+
+
 def get_distinct_function_for_project():
     # Query to select distinct names from the Function table
     names = session.query(Function.name).filter().distinct().all()

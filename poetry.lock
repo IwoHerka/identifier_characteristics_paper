@@ -1287,6 +1287,20 @@ files = [
 ]
 
 [[package]]
+name = "namecompare"
+version = "0.0.7"
+description = "Ratio calculator between names - especially of elements (variables, classes and methods) in a program code."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "namecompare-0.0.7-py3-none-any.whl", hash = "sha256:d46460ea786d84584905120249cd3ee6ef05de77d4f72b9fdce0d70a315961cb"},
+    {file = "namecompare-0.0.7.tar.gz", hash = "sha256:0ae586b411b1cab2d5721ed10ab5689e3d5f341d2f276eeaa3f36aff94cbb055"},
+]
+
+[package.dependencies]
+strsimpy = ">=0.2.1"
+
+[[package]]
 name = "nltk"
 version = "3.8.1"
 description = "Natural Language Toolkit"
@@ -2700,6 +2714,17 @@ files = [
 catalogue = ">=2.0.3,<2.1.0"
 
 [[package]]
+name = "strsimpy"
+version = "0.2.1"
+description = "A library implementing different string similarity and distance measures"
+optional = false
+python-versions = "*"
+files = [
+    {file = "strsimpy-0.2.1-py3-none-any.whl", hash = "sha256:d676a440d5d3dbcf5ba92d01814a03a218776ce07bd7a8185da7019e04cf9ba7"},
+    {file = "strsimpy-0.2.1.tar.gz", hash = "sha256:0842eb57f7af86c882a59a1bc8721ec2580a267e563fd0503ced2972040372c9"},
+]
+
+[[package]]
 name = "thinc"
 version = "8.2.3"
 description = "A refreshing functional take on deep learning, compatible with your favorite libraries"
@@ -3147,4 +3172,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c1b7193e5cae293a91fd12ac95a6274dfbb9c1541ac84ed09207a119464f9a48"
+content-hash = "ca9e22d72378ac5c9ddcfb890568445b28b938a35dc8cba9eb6dee1da440e3b0"
