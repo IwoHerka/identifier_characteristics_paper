@@ -25,7 +25,7 @@ BUILD_DIR = path.basename("build")
 DATA_DIR = path.basename("data")
 MODELS_DIR = path.join(BUILD_DIR, "models")
 PROJECTS_DIR = path.join(BUILD_DIR, "projects")
-FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, "training_file.txt")
+FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, "training_file2.txt")
 FASTTEXT_MODEL_FILE = path.join(MODELS_DIR, "fasttext.bin")
 GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 
@@ -39,6 +39,10 @@ GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 
 @app.command()
 def train_fasttext():
+    """
+    Generates training file based on function names in database and trains
+    fasttext model.
+    """
     init_session()
     _train_fasttext(FASTTEXT_TRAINING_FILE, FASTTEXT_MODEL_FILE)
 
@@ -80,7 +84,7 @@ def extract_functions(lang=None):
 
 # Uses OpenAI
 @app.command()
-def classify(lang: str, outdir: str = "build/classified/", limit: int = 200):
+def classify(lang: str, outdir: str = "build/classified2", limit: int = 200):
     _classify(lang, outdir, limit)
 
 
@@ -104,10 +108,12 @@ def calculate_metrics(lang: str, model: str, indir: str = None):
     - [x] Percent of dictionary words\n
     - [x] External similarity\n
     - [x] Grammatical patterns\n
+
     - [x] Term entropy\n
     - [?] Context coverage\n
+
     - [?] Conciseness & consistency violations\n
-    - [?] Semantic similarity\n
+    - [?] Semantic similarity\n (NTLK model)
     - [?] Word concreteness\n
     - [?] Levenshtein distance\n
     - [ ] Lexical bad smells\n

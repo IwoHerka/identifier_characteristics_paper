@@ -62,7 +62,7 @@ def get_written(csv_file_path):
 
 # TODO: Make into a command in main.py
 def classify(lang, outdir, limit):
-    client = OpenAI(api_key=os.environ.get("OPENAI"))
+    client = OpenAI(api_key=os.getenv("OPENAI"))
 
     f = f"{outdir}/{lang}.csv"
     written = get_written(f)
@@ -119,8 +119,8 @@ def classify(lang, outdir, limit):
 
             chat_completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                # model="gpt-3.5-turbo"
-                model="gpt-4",
+                model="gpt-3.5-turbo"
+                # model="gpt-4",
             )
 
             response = chat_completion.choices[0].message.content

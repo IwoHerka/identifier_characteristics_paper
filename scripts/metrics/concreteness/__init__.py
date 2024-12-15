@@ -187,6 +187,9 @@ if __name__ == "__main__":
         """.split()
     ]
 
+    training_file_corpus = open("build/models/training_file.txt", "r").read().split()
+    corpus = [training_file_corpus]
+
     # Train a Word2Vec model just to utilize its internal word count and indexing
     model = Word2Vec(
         corpus, window=5, min_count=1, sg=1, workers=1, callbacks=[CallbackAny2Vec()]
@@ -212,8 +215,8 @@ if __name__ == "__main__":
 
     vocab = list(model.wv.key_to_index.keys())
 
-    index_word1 = vocab.index("et")  # Replace 'word1' with the actual word
-    index_word2 = vocab.index("ornare")  # Replace 'word2' with the actual word
+    index_word1 = vocab.index("checkpoint")  # Replace 'word1' with the actual word
+    index_word2 = vocab.index("query")  # Replace 'word2' with the actual word
     vector1 = cooccurrence_matrix[index_word1]
     vector2 = cooccurrence_matrix[index_word2]
     similarity = cosine_similarity(vector1, vector2)

@@ -84,4 +84,3 @@ Definition 4 (Concreteness of a variable name).
 
 Concreteness(v) if v is unigram = fc(v)
 Concreteness(v) if v is multigram = duc(x) * (1 + Δcgr(v))
-
