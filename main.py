@@ -8,7 +8,7 @@ from rich.console import Console
 from scipy.spatial.distance import cosine
 
 from db.utils import init_session
-from scripts.classify import classify as _classify
+from scripts.metrics.llm.classify import classify as _classify
 from scripts.download import clone_repos, download_repos
 from scripts.extract.functions import Functions
 from scripts.extract.grammar import Grammar
@@ -18,6 +18,8 @@ from scripts.training.train_fasttext import train as _train_fasttext
 from scripts.training.train_gensim import train as _train_gensim
 from scripts.similarity.calculate_similarity_per_project import calculate
 from scripts.metrics.term_entropy import get_term_entropy
+from scripts.metrics.llm.rate import rate_lexicon, rate_relevancy, classify_repo
+
 console = Console()
 app = typer.Typer()
 
@@ -29,12 +31,20 @@ FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, "training_file2.txt")
 FASTTEXT_MODEL_FILE = path.join(MODELS_DIR, "fasttext.bin")
 GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 
+# TODO: Automatically discard suspicious functions (obsfucated, etc)
 # TODO: Automate extract functions
 # TODO: Automate prepare training data
 # TODO: Automate training fasttext
-# TODO: Automate calculate similarity
+# TODO: Automate calculate similarity (also for concreteness)
 # TODO: Add function to build co-occurance matrix for all project corpus to
+# TODO Use LLM to filter out functions that are not relevant for humans
 # calculate LSI-derived conceptual/relational similarity
+# TODO Check accuracy of LLM classifications (small sample, myself)
+
+
+# Threats to validity:
+# - LLM rating is not a perfect measure of comprehensibility
+# - Included functions are not discriminated (boilerplate functions are included)
 
 
 @app.command()
@@ -44,7 +54,7 @@ def train_fasttext():
     fasttext model.
     """
     init_session()
-    _train_fasttext(FASTTEXT_TRAINING_FILE, FASTTEXT_MODEL_FILE)
+    _train_fasttext(FASTTEXT_TRAINING_FILE, MODELS_DIR)
 
 
 @app.command()
@@ -88,6 +98,21 @@ def classify(lang: str, outdir: str = "build/classified2", limit: int = 200):
     _classify(lang, outdir, limit)
 
 
+@app.command()
+def rate_lexicon_llm(repo_id: int):
+    rate_lexicon(repo_id)
+
+
+@app.command()
+def rate_relevancy_llm(repo_id: int):
+    rate_relevancy(repo_id)
+
+
+@app.command()
+def classify_repo_llm(repo_id: int):
+    classify_repo(repo_id)
+
+
 # Extract grammar for each function, uses
 @app.command()
 def extract_grammar():
@@ -110,15 +135,19 @@ def calculate_metrics(lang: str, model: str, indir: str = None):
     - [x] Grammatical patterns\n
 
     - [x] Term entropy\n
-    - [?] Context coverage\n
+    - [CHECK] Context coverage\n
 
-    - [?] Conciseness & consistency violations\n
-    - [?] Semantic similarity\n (NTLK model)
-    - [?] Word concreteness\n
-    - [?] Levenshtein distance\n
-    - [ ] Lexical bad smells\n
-    - [ ] Flesch–Kincaid readability\n
+    - [WIP] Word concreteness\n
+
+    - [CHECK] Conciseness & consistency violations\n
+
+    - [WIP] Semantic similarity\n (NTLK model)
+    Add support for 2 context windows
+
+    - [WIP] Levenshtein distance (within function, within identifiers)\n
     - [ ] Lexical diversity (TTR)\n
+
+    - [ ] Lexical bad smells\n
     """
     indir = indir or path.join(PROJECTS_DIR, lang.lower())
     # model = model or path.join(MODELS_DIR, 'default.bin')
@@ -186,7 +215,7 @@ def clean(lang: str):
         for file in files:
             name, ext = os.path.splitext(file)
 
-            if not ext.lower() in exts and name != "README":
+            if not ext.lower() in exts and (name != "README" or name != "readme"):
                 file_path = os.path.join(root, file)
                 to_remove.append(file_path)
 

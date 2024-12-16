@@ -3,6 +3,9 @@ import itertools
 import csv
 import os
 import sys
+import syllapy
+import casestyle
+from nltk.tokenize import RegexpTokenizer
 from os import path
 from statistics import median
 from Levenshtein import distance as levenshtein_distance
@@ -31,8 +34,12 @@ def get_single_letters(words):
     pass
 
 
-import nltk
-from nltk.tokenize import RegexpTokenizer
+def get_syllable_count(identifier):
+    # Replace with casestyle
+    softwords = wordninja.split(identifier)
+    # TODO Deabbreviate
+    syllables = sum([syllapy.count(word) for word in softwords])
+    return syllables
 
 
 # Function to tokenize based on uppercase letters
@@ -42,27 +49,30 @@ def tokenize_identifier(identifier):
     return tokens
 
 
+def get_soft_words(identifier):
+    # Case style
+    return len(casestyle.casepreprocess(identifier))
+
+
 def get_casing_style(identifier):
-    tokens = tokenize_identifier(identifier)
-    if "_" in identifier:
-        return "snake_case"
-    if "-" in identifier:
-        return "kebab-case"
+    camelcase = casestyle.camelcase(identifier)
+    pascalcase = casestyle.pascalcase(identifier)
+    snakecase = casestyle.snakecase(identifier)
+    kebabcase = casestyle.kebabcase(identifier)
+    macrocase = casestyle.macrocase(identifier)
 
-    if len(tokens) == 1:
-        if identifier.islower():
-            return "lowercase"
-        if identifier[0].isupper() and identifier[1:].islower():
-            return "PascalCase"
-        if identifier.isupper():
-            return "UPPERCASE"
-
-    if identifier[0].islower() and len(tokens) > 1:
-        return "camelCase"
-    if identifier[0].isupper() and len(tokens) > 1:
-        return "PascalCase"
-
-    return "unknown"
+    if identifier == camelcase:
+        return "camelcase"
+    elif identifier == pascalcase:
+        return "pascalcase"
+    elif identifier == snakecase:
+        return "snakecase"
+    elif identifier == kebabcase:
+        return "kebabcase"
+    elif identifier == macrocase:
+        return "macrocase"
+    else:
+        return "unknown"
 
 
 def get_abbreviations(abbreviations, multigrams):

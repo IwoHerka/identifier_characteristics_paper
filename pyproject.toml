@@ -36,6 +36,9 @@ gensim = "^4.3.2"
 scikit-learn = "^1.4.2"
 psycopg2-binary = "^2.9.9"
 namecompare = "^0.0.7"
+wordninja = "^2.0.0"
+syllapy = "^0.7.2"
+casestyle = "^0.0.4"
 
 
 [build-system]

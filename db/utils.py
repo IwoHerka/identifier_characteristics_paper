@@ -22,6 +22,10 @@ def new_session(engine):
     return Session()
 
 
+def get_repo(repo_id):
+    return session.query(Repo).filter_by(id=repo_id).first()
+
+
 def add_repo(id, name, stars, size, lang, owner):
     new_repo = Repo(id=id, name=name, stars=stars, size=size, lang=lang, owner=owner)
 
@@ -175,3 +179,8 @@ def get_top_function_names():
     function_names = [func.name for func in functions]
 
     return function_names
+
+
+def mark_irrelevant(function, is_relevant):
+    function.relevant = is_relevant
+    session.commit()

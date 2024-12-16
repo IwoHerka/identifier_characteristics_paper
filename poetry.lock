@@ -170,6 +170,16 @@ files = [
 numpy = {version = ">=1.19.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
+name = "casestyle"
+version = "0.0.4"
+description = "String case style converter (snake_case, camelCase, PascalCase, kebab-case, MACRO_CASE can be converted to each other)."
+optional = false
+python-versions = ">=3"
+files = [
+    {file = "casestyle-0.0.4.tar.gz", hash = "sha256:a4291b396ce5b5ff51d44f0917226a12734a360cec8704a82c78653ff85b0c99"},
+]
+
+[[package]]
 name = "catalogue"
 version = "2.0.10"
 description = "Super lightweight function registries for your library"
@@ -2725,6 +2735,17 @@ files = [
 ]
 
 [[package]]
+name = "syllapy"
+version = "0.7.2"
+description = "Calculate syllable counts for English words."
+optional = false
+python-versions = ">=3.6, <4"
+files = [
+    {file = "syllapy-0.7.2-py3-none-any.whl", hash = "sha256:198a7413033c32d7b31e21962efb3f284bcea80d3346e954b938ca1ebe6bee20"},
+    {file = "syllapy-0.7.2.tar.gz", hash = "sha256:e55a7ad97d8b232e174b83f91b8f9be0c355d2a8e1208c7f6229055189605564"},
+]
+
+[[package]]
 name = "thinc"
 version = "8.2.3"
 description = "A refreshing functional take on deep learning, compatible with your favorite libraries"
@@ -3128,6 +3149,16 @@ files = [
 ]
 
 [[package]]
+name = "wordninja"
+version = "2.0.0"
+description = "Probabilistically split concatenated words using NLP based on English Wikipedia uni-gram frequencies."
+optional = false
+python-versions = "*"
+files = [
+    {file = "wordninja-2.0.0.tar.gz", hash = "sha256:1a1cc7ec146ad19d6f71941ee82aef3d31221700f0d8bf844136cf8df79d281a"},
+]
+
+[[package]]
 name = "xlsxwriter"
 version = "3.1.9"
 description = "A Python module for creating Excel XLSX files."
@@ -3172,4 +3203,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "ca9e22d72378ac5c9ddcfb890568445b28b938a35dc8cba9eb6dee1da440e3b0"
+content-hash = "56484e604c68702f3edf01eab49bb92e32f43c165ae8151ec236f8c990fd7732"

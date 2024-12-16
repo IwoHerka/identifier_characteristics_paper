@@ -40,6 +40,7 @@ from db.utils import get_functions_for_repo
 from rich.console import Console
 from collections import defaultdict
 import math
+
 console = Console()
 
 

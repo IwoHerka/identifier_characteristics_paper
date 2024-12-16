@@ -74,11 +74,18 @@ def clone_repos(dest_dir, force=False, only_missing=False):
 
         console.print(f"Cloning {repo.name} into {dest_repo_path}...")
         url = f"https://github.com/{repo.owner}/{repo.name}.git"
-        subprocess.run(["git", "clone", "--depth", "1", url, dest_repo_path])
+        # subprocess.run(["git", "clone", "--depth", "1", url, dest_repo_path])
 
         # Read the entire README.md and decide how much to save
-        readme_path = os.path.join(dest_repo_path, "README.md")
         readme_content = ""
+        readme_files = ["README.md", "readme.md", "README.txt", "readme.txt", "README.rst", "readme.rst"]
+
+        for readme_file in readme_files:
+            readme_path = os.path.join(dest_repo_path, readme_file)
+            if os.path.exists(readme_path):
+                break
+        else:
+            readme_path = None
 
         try:
             with open(readme_path, "r", encoding="utf-8") as readme_file:

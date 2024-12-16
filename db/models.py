@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from db.engine import Base
 
@@ -36,6 +36,9 @@ class Function(Base):
     lang = Column(String)
     order = Column(Integer)
     grammar = Column(String)
+
+    relevant = Column(Boolean, nullable=True, default=None)
+    metrics = Column(String, nullable=True, default=None)
 
     # median similarity
     # mean similarity
