@@ -1,10 +1,13 @@
 import re
+import os
 import requests
 from rich.console import Console
 
-from db.utils import get_functions_for_repo, init_session, mark_irrelevant, get_repo
+from db.utils import get_functions_for_repo, init_session, mark_irrelevant, get_repos, classify_repo
 
 console = Console()
+
+LLM_MODEL = os.getenv("LLM_MODEL", "llama3.2")
 
 
 def rate_relevancy(repo_id):
@@ -25,7 +28,7 @@ def rate_relevancy(repo_id):
 
     url = "http://localhost:11434/api/generate"
     payload = {
-        "model": "llama3.2:latest",
+        "model": LLM_MODEL,
         "prompt": prompt,
         "stream": False,
     }
@@ -64,11 +67,7 @@ def rate_lexicon(repo_id):
     """
 
     url = "http://localhost:11434/api/generate"
-    payload = {
-        "model": "llama3.2:latest",
-        "prompt": prompt,
-        "stream": False,
-    }
+    payload = {"model": LLM_MODEL, "prompt": prompt, "stream": False}
 
     response = requests.post(url, json=payload)
 
@@ -114,47 +113,51 @@ def read_first_20_lines(file_path):
         return f"An error occurred: {str(e)}"
 
 
-def classify_repo(repo_id):
+def classify_all_repos(only_retry=False):
   init_session()
-  repo = get_repo(repo_id)
 
-  prompt = f"""
-  Classify open source project "{repo.name}" written in {repo.lang} language using a single word describing its main purpose.
+  for repo in get_repos().all():
+    if repo.readme is None:
+      continue
 
-  You can use a fragment of the README file (if available) to help you classify the project:
-  {repo.readme}
+    if only_retry and (repo.type or repo.type == 'unknown'):
+      continue
 
-  Don't explain your reasoning, just respond with following format: I classify this project as <type>
-  """
+    prompt = f"""
+    Classify open source project "{repo.name}" written in {repo.lang} language into one of the following categories:
 
-  # prompt = f"""
-  # Classify open source project "{repo.name}" written in {repo.lang} language into one of the following categories:
+    - web - library related to web development or web networking
+    - cli - library related to command line, such as CLI utilities, pretty printing, tools for building CLI apps
+    - db - library related to databases, such as database ORMs, utilities, integrations and so on
+    - ml - project related to machine learning, AI, deep learning, and so on
+    - build - project is build tool, such as build system, package manager, etc
+    - other - project doesn't fit into any of the above categories
 
-  # - lib/web - library related to web development or web networking
-  # - lib/cli - library related to command line, such as CLI utilities, pretty printing, tools for building CLI apps
-  # - lib/db - library related to databases, such as database ORMs, utilities, integrations and so on
-  # - lib/ml - project related to machine learning, AI, deep learning, and so on
-  # - lib/build - project is build tool, such as build system, package manager, etc
-  # - other - project doesn't fit into any of the above categories
+    You can use a fragment of the README file (if available) to help you classify the project:
+    {repo.readme}
 
-  # You can use a fragment of the README file (if available) to help you classify the project:
-  # {repo.readme}
+    Don't explain your reasoning, just respond with following format: I classify this project as <type>
+    """
 
-  # Don't explain your reasoning, just respond with following format: I classify this project as <type>
-  # """
+    url = "http://localhost:11434/api/generate"
+    payload = {"model": LLM_MODEL, "prompt": prompt, "stream": False}
+    response = requests.post(url, json=payload)
 
-  console.print(prompt)
+    if response.status_code == 200:
+        try:
+            json = response.json()['response']
+            console.print(json)
+            classified_type = json.split("I classify this project as")[1].strip()
 
-  url = "http://localhost:11434/api/generate"
-  payload = {"model": "llama3.2:latest", "prompt": prompt, "stream": False}
-  response = requests.post(url, json=payload)
-
-  if response.status_code == 200:
-    try:
-      json = response.json()['response']
-      console.print(json)
-      
-    except ValueError:
-      print(f"Failed to parse response LLM")
-  else:
-      print(f"Request failed with status code {response.status_code}")
+            for typ in ['web', 'cli', 'db', 'ml', 'build', 'other']:
+                console.print(f'Checking if {typ} in {classified_type}')
+                if typ in classified_type:
+                    classify_repo(repo, typ)
+                    console.print(f'Classified {repo.name} as {typ}')
+                    break
+        except:
+            console.print(f"Failed to parse response LLM: {json}")
+            classify_repo(repo, 'unknown')
+    else:
+        console.print(f"Request failed with status code {response.status_code}")
+        classify_repo(repo, 'unknown')

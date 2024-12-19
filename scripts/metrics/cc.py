@@ -42,4 +42,4 @@ def get_conciseness_and_consistency(
                     conciseness_violations.append(identifiers[i])
                     break  # No need to find more than one violation for conciseness
 
-    return set(consistency_violations), set(conciseness_violations)
+    return len(consistency_violations), len(conciseness_violations)

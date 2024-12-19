@@ -6,9 +6,9 @@ import csv
 from nltk.corpus import words
 from nltk.stem import WordNetLemmatizer
 
-# TODO
-nltk.download("wordnet")
-nltk.download("omw-1.4")
+# TODO Don't keep this global
+# nltk.download("wordnet")
+# nltk.download("omw-1.4")
 
 # Initialize PyEnchant spell checker
 d = enchant.Dict("en_US")
@@ -54,20 +54,20 @@ def is_dict_word(word):
     return False
 
 
-def load_abbreviations(file_path: str) -> set:
-    first_column_values = set()
+def load_abbreviations(file_path: str) -> dict:
+    abbreviations = {}
 
-    with open(file_path, mode="r", newline="") as csvfile:
+    with open(file_path, newline="") as csvfile:
         reader = csv.reader(csvfile)
 
-        # Optionally skip the header if your CSV file has one
-        # next(reader, None)  # Uncomment this line if there's a header
-
         for row in reader:
-            if row:  # Ensure the row is not empty
-                first_column_values.add(row[0])
+            value, key = row
+            if key in abbreviations:
+                abbreviations[key].add(value)
+            else:
+                abbreviations[key] = set([value])
 
-    return first_column_values
+    return abbreviations
 
 
 def split_compound(word):

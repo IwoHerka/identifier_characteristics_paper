@@ -36,15 +36,17 @@ query the data and do calculations. Only results should be saved to the
 database.
 """
 
-from db.utils import get_functions_for_repo
-from rich.console import Console
-from collections import defaultdict
 import math
+from statistics import median
+from collections import defaultdict
+from rich.console import Console
+
+from db.utils import get_functions_for_repo, get_repos, update_function_metrics
 
 console = Console()
 
 
-def get_term_entropy(repo_id, normalize=False):
+def calculate_term_entropy(normalize=False):
     """
     Given a repo_id, calculate term entropy where term is identifier and entity
     is function.  In other words, how scattered identifiers are across functions
@@ -73,48 +75,55 @@ def get_term_entropy(repo_id, normalize=False):
     
         H(foo) = - (2/3 * log(2/3) + 1/3 * log(1/3))= 0.9183
     """
-    functions = get_functions_for_repo(repo_id)
+    for repo in get_repos():
+        console.print(f"Calculating term entropy for repo {repo.id}")
+        functions = get_functions_for_repo(repo.id)
 
-    # Step 1: Build identifier occurrence matrix
-    identifier_entity_matrix = defaultdict(lambda: defaultdict(int))
-    
-    # Step 2: Populate the matrix with identifier occurrences in functions
-    for function in functions:
-        identifiers = function.names.split() 
-
-        for identifier in identifiers:
-            identifier_entity_matrix[identifier][function.id] += 1
-
-    # Step 3: Calculate entropy for each identifier
-    identifier_entropy_results = []
-    
-    for identifier, entities in identifier_entity_matrix.items():
-        total_count = sum(entities.values())
-
-        if total_count == 0:
-            continue
+        # Step 1: Build identifier occurrence matrix
+        identifier_entity_matrix = defaultdict(lambda: defaultdict(int))
         
-        entropy = 0
+        # Step 2: Populate the matrix with identifier occurrences in functions
+        for function in functions:
+            identifiers = function.names.split() 
 
-        for _, count in entities.items():
-            prob = count / total_count
+            for identifier in identifiers:
+                identifier_entity_matrix[identifier][function.id] += 1
 
-            if prob > 0:  # Avoid log(0)
-                entropy -= prob * math.log(prob)
-
-        identifier_entropy_results.append((identifier, entropy))
-
-    # Step 4: Normalize entropy values to the range [0, 1] by max entropy
-    if normalize and identifier_entropy_results:
-        max_entropy = max(entropy for _, entropy in identifier_entropy_results)
+        # Step 3: Calculate entropy for each identifier
+        identifier_entropy_results = {}
         
-        identifier_entropy_results = [
-            (identifier, entropy / max_entropy) if max_entropy > 0 else (identifier, 0)
-            for identifier, entropy in identifier_entropy_results
-        ]
+        for identifier, entities in identifier_entity_matrix.items():
+            total_count = sum(entities.values())
 
-    for identifier, entropy in identifier_entropy_results:
-        pass  # TODO: Save to database
-    
-    return identifier_entropy_results
+            if total_count == 0:
+                continue
+            
+            entropy = 0
 
+            for _, count in entities.items():
+                prob = count / total_count
+
+                if prob > 0:  # Avoid log(0)
+                    entropy -= prob * math.log(prob)
+
+            identifier_entropy_results[identifier] = entropy
+
+        # Step 4: Normalize entropy values to the range [0, 1] by max entropy
+        if normalize and identifier_entropy_results:
+            max_entropy = max(entropy for _, entropy in identifier_entropy_results)
+
+            # TODO: Fix normalize            
+            # identifier_entropy_results = [
+            #     (identifier, entropy / max_entropy) if max_entropy > 0 else (identifier, 0)
+            #     for identifier, entropy in identifier_entropy_results
+            # ]
+
+        for function in functions:
+            names = function.names.split()
+
+            entropies = []
+            for name in names:
+                entropies.append(identifier_entropy_results[name])
+
+            update_function_metrics(function, "median_term_entropy", median(entropies))
+            console.print(f"Median term entropy for {function.name}: {median(entropies)}")

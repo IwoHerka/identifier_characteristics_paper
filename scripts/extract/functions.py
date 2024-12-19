@@ -11,7 +11,8 @@ from db.utils import *
 from db.engine import get_engine
 
 
-POOL_SIZE = 1
+POOL_SIZE = 8
+MAX_FUNCTIONS = 1000
 
 console = Console()
 
@@ -20,6 +21,7 @@ def extract_repo(repo, lang):
     console.print(repo)
     successes = []
     errors = []
+    extracted_functions = 0
 
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", lang))
@@ -42,6 +44,10 @@ def extract_repo(repo, lang):
                 names = " ".join(names)
                 add_function(session, fname, names, repo_id, file, lang, file_order)
                 file_order += 1
+                extracted_functions += 1
+
+                if extracted_functions >= MAX_FUNCTIONS:
+                    break
 
             successes.append(file)
         except RecursionError as e:
@@ -52,6 +58,9 @@ def extract_repo(repo, lang):
             # TODO: Log more info
             console.print(file)
             errors.append(file)
+
+        if extracted_functions >= MAX_FUNCTIONS:
+            break
 
     return [successes, errors]
 
@@ -68,7 +77,7 @@ class Functions:
         results = [[], []]
 
         for lang in langs:
-            repos = get_repos_without_functions(lang=lang)[:1]
+            repos = get_repos_without_functions(lang=lang)
             console.print(repos)
 
             with Pool(POOL_SIZE) as p:

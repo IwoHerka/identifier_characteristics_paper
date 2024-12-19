@@ -1,11 +1,8 @@
-import argparse
-import csv
-import itertools
-import random
-import sys
 from collections import deque
+import random
 from itertools import combinations
-
+import json
+import casestyle
 import fasttext
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,13 +10,23 @@ import pandas as pd
 import scipy.stats as stats
 from matplotlib.ticker import ScalarFormatter
 from scipy.spatial.distance import cosine
+from db.utils import get_repos_by_lang, init_session, get_functions_for_repo, update_function_metrics
+from scripts.utils import overall_mean, overall_median
+from scripts.lang import LANGS
+from rich.console import Console
 
-csv.field_size_limit(sys.maxsize)
 
-from utils import overall_mean, overall_median
+console = Console()
 
 
-def draw_one_dimensional_scatter(values):
+CALC_PVALUE = False
+MODEL_NAME = 'ft_19M_100x1000_5ws'
+MODEL = f'build/models/{MODEL_NAME}.bin'
+ATTR_KEY = ['median_similarity', MODEL_NAME]
+VERBOSE = False
+
+
+def draw_one_dimensional_scatter(values, lang):
     # Generate a fixed x-coordinate with slight random jitter
     x = np.ones(len(values))
 
@@ -32,7 +39,7 @@ def draw_one_dimensional_scatter(values):
     plt.yticks(values)  # Optionally, mark the values on the y-axis
     # plt.xlabel('Fixed Position with Slight Jitter')
     # plt.ylabel('Values')
-    plt.savefig("build/plots/java_projects.png")
+    plt.savefig(f"build/stats/similarity_{lang}_scatter.png")
 
     # Show the plot
     plt.show()
@@ -42,32 +49,40 @@ def unique_pairs(strings):
     return list(combinations(set(strings), 2))
 
 
-# Given a CSV file and a model, go over all function-names pair
-# and yield cosine distance for each word pair within a function.
-def get_median_dist(file_path, model):
-    with open(file_path, newline="") as csvfile:
-        reader = csv.reader(csvfile)
-        i = 0
+def all_pairs(strings):
+    return list(combinations(strings, 2))
 
-        for row in reader:
-            i += 1
-            if i % 10 != 0:
-                continue
-            column1, column2 = row
-            fname = column1.split("#")[0]
-            names = column2.split(" ")
-            names = unique_pairs(names)
+
+def get_median_dist(repos, model):
+    for repo in repos:
+        for function in get_functions_for_repo(repo.id):
+            # if function.metrics and ATTR_KEY[0] in function.metrics and ATTR_KEY[1] in function.metrics[ATTR_KEY[0]]:
+            #     continue
+
+            names = function.names.split(" ")
+            all_names = all_pairs(random.sample(names, min(50, len(names))))
+            prev_cosines = {}
             cosines = []
 
-            for name1, name2 in names:
-                # if len(name1) > 2 and len(name2) > 2:
-                cos = cosine(model.get_word_vector(name1), model.get_word_vector(name2))
+            for name1, name2 in all_names:
+                if (name1, name2) in prev_cosines:
+                    cosines.append(prev_cosines[(name1, name2)])
+                    continue
+
+                if VERBOSE:
+                    console.print(f"Calculating similarity for {name1} and {name2}")
+
+                name_a = casestyle.camelcase(name1).lower()
+                name_b = casestyle.camelcase(name2).lower()
+                cos = cosine(model.get_word_vector(name_a), model.get_word_vector(name_b))
+
                 if cos != None:
+                    prev_cosines[(name1, name2)] = cos
                     cosines.append(cos)
-                    # yield cos
 
             median = overall_median(cosines)
             if median != None:
+                update_function_metrics(function, ATTR_KEY, median)
                 yield median
 
 
@@ -103,30 +118,31 @@ def plot_values(values, save_path, use_scatter=False, y_lim=None):
 #     Calculate repetitions and similar strings
 # [ ] Calculate how many words per function/file/project/language have high similairty/low (calculate extreme sets)
 
-CALC_PVALUE = False
-MODEL = "build/models/all.bin"
-# MODEL = 'build/models/cc.en.300.bin'
 
-if __name__ == "__main__":
+def plot_similarity(verbose: bool = False):
+    global VERBOSE
+    VERBOSE = verbose
+
+    init_session()
     model = fasttext.load_model(MODEL)
     pvalues = []
 
     # for i in range(10, 30):
     all_distances = []
 
-    for lang in [
-        "clojure",
-        "elixir",
-        "erlang",
-        "java",
-        "javascript",
-        "ocaml",
-        "python",
-    ]:
-        # for lang in ['c', 'haskell']:
-        file = f"build/sampled/{lang}.csv"
+    # for lang in [
+    #     "clojure",
+    #     "elixir",
+    #     "erlang",
+    #     "java",
+    #     "javascript",
+    #     "ocaml",
+    #     "python",
+    # ]:
+    for lang in LANGS:
+        repos = get_repos_by_lang(lang)
 
-        series = get_median_dist(file, model)
+        series = get_median_dist(repos, model)
         # distances = list(itertools.islice(series, 250000))
         distances = list(series)
         # distances = [random.random() / 100 for _ in range(j)]
@@ -136,18 +152,22 @@ if __name__ == "__main__":
         median = overall_median(distances)
         print(f"Median for {lang}: {median}")
 
-        if CALC_PVALUE:
-            # Histogram
-            plt.hist(distances, bins="auto")
-            plt.title("Histogram of Cosine Distances")
-            plt.savefig(f"build/stats/histogram_{lang}.png")
-            plt.close()
+        # draw_one_dimensional_scatter(distances, lang)
+        plot_values(distances, save_path=f"build/stats/similarity_{lang}.png")
 
-            # Q-Q Plot
-            stats.probplot(distances, dist="norm", plot=plt)
-            plt.title("Q-Q Plot of Cosine Distances")
-            plt.savefig(f"build/stats/q_plot_{lang}.png")
-            plt.close()
+        # Histogram
+        plt.hist(distances, bins="auto")
+        plt.title("Histogram of Cosine Distances")
+        plt.savefig(f"build/stats/histogram_{lang}.png")
+        plt.close()
+
+        # Q-Q Plot
+        stats.probplot(distances, dist="norm", plot=plt)
+        plt.title("Q-Q Plot of Cosine Distances")
+        plt.savefig(f"build/stats/q_plot_{lang}.png")
+        plt.close()
+
+        if CALC_PVALUE:
 
             # Shapiro-Wilk Test
             stat, p = stats.shapiro(distances)
@@ -160,6 +180,7 @@ if __name__ == "__main__":
                 print("Sample does not look Gaussian (reject H0)")
 
     if CALC_PVALUE:
+        # Must pick at most 5000 samples
         anova_result = stats.f_oneway(all_distances[0], all_distances[1])
         print(
             f"ANOVA result: F={anova_result.statistic}, p-value={anova_result.pvalue}"

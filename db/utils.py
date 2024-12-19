@@ -1,4 +1,6 @@
+import json
 from collections import defaultdict
+import casestyle
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker, aliased
@@ -41,6 +43,10 @@ def get_repos():
     return session.query(Repo)
 
 
+def get_repos_by_lang(lang):
+    return session.query(Repo).filter(Repo.lang == lang).all()
+
+
 def get_repos_without_functions(lang):
     repos_with_no_functions = (
         session.query(Repo)
@@ -73,6 +79,11 @@ def update_repo(repo, path, readme):  # , files, loc, readme):
     session.commit()
 
 
+def classify_repo(repo, typ):
+    repo.type = typ
+    session.commit()
+
+
 def get_functions():
     return session.query(Function).all()
 
@@ -91,10 +102,11 @@ def get_distinct_function_for_project():
     return unique_names
 
 
-def get_ordered_function_names(repo_id):
+def get_training_text_for_repo(repo_id):
     """
     Given a repo_id, return an ordered corpus of names from all project functions,
     ordered by file and order within file.
+    # TODO: Remove preprended _
     """
     functions = (
         session.query(Function)
@@ -103,8 +115,16 @@ def get_ordered_function_names(repo_id):
         .all()
     )
 
-    names = [f.names for f in functions]
-    return " ".join(names)
+    names = []
+
+    for function in functions:
+        fn_names = []
+        for name in function.names.split(" "):
+            fn_names.append(casestyle.camelcase(name).lower())
+
+        names.append(" ".join(fn_names))
+
+    return "\n".join(names)
 
 
 def get_grammar_by_name(name):
@@ -130,6 +150,21 @@ def update_function_grammar(session, name, new_grammar):
     session.query(Function).filter(Function.name == name).update(
         {"grammar": new_grammar}
     )
+    session.commit()
+
+
+def update_function_metrics(function, keys, value):
+    if function.metrics:
+        metrics = function.metrics
+    else:
+        metrics = {}
+
+    if type(keys) is list:
+        metrics[keys[0]] = {keys[1]: value}
+    else:
+        metrics[keys] = value
+
+    function.metrics = json.dumps(metrics)
     session.commit()
 
 

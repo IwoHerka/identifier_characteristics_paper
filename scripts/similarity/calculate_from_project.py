@@ -1,3 +1,4 @@
+# UNUSED
 import argparse
 
 import fasttext

@@ -13,12 +13,12 @@ from scripts.download import clone_repos, download_repos
 from scripts.extract.functions import Functions
 from scripts.extract.grammar import Grammar
 from scripts.lang import LANGS, get_exts
-from scripts.metrics.basic import calculate as calc_basic
 from scripts.training.train_fasttext import train as _train_fasttext
-from scripts.training.train_gensim import train as _train_gensim
 from scripts.similarity.calculate_similarity_per_project import calculate
-from scripts.metrics.term_entropy import get_term_entropy
-from scripts.metrics.llm.rate import rate_lexicon, rate_relevancy, classify_repo
+from scripts.metrics.term_entropy import calculate_term_entropy
+from scripts.metrics.llm.rate import rate_lexicon, rate_relevancy, classify_all_repos
+from scripts.metrics.basic import calculate_basic_metrics
+from scripts.similarity.calculate_similarity_from_sampled import plot_similarity as _plot_similarity
 
 console = Console()
 app = typer.Typer()
@@ -27,10 +27,11 @@ BUILD_DIR = path.basename("build")
 DATA_DIR = path.basename("data")
 MODELS_DIR = path.join(BUILD_DIR, "models")
 PROJECTS_DIR = path.join(BUILD_DIR, "projects")
-FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, "training_file2.txt")
+FASTTEXT_TRAINING_FILE = path.join(MODELS_DIR, "training_file.txt")
 FASTTEXT_MODEL_FILE = path.join(MODELS_DIR, "fasttext.bin")
 GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 
+# Library
 # TODO: Automatically discard suspicious functions (obsfucated, etc)
 # TODO: Automate extract functions
 # TODO: Automate prepare training data
@@ -41,6 +42,8 @@ GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 # calculate LSI-derived conceptual/relational similarity
 # TODO Check accuracy of LLM classifications (small sample, myself)
 
+# Analysis
+# TODO In analysis, give metric which is which lang has more < 0.2 similarity functions
 
 # Threats to validity:
 # - LLM rating is not a perfect measure of comprehensibility
@@ -58,15 +61,35 @@ def train_fasttext():
 
 
 @app.command()
-def train_gensim():
+def calc_basic_metrics():
+    """
+    - Median identifier length\n
+    - Median syllable count\n
+    - Median soft word count\n
+    - Ratio of unique to duplicate identifiers\n
+    - Number of single letter identifiers\n
+    - Most common casing style\n
+    - Percent of abbreviations\n
+    - Percent of dictionary words\n
+    - Levenshtein distance (within function)\n (add within identifiers?)
+    - Conciseness & consistency violations\n
+
+    - Term entropy\n
+    - Semantic similarity\n (NTLK model) (add support for 2 context windows)
+    - Grammatical patterns\n
+
+    - [WIP] External similarity\n
+    - [WIP] Context coverage\n
+    - [WIP] Word concreteness\n
+    """
     init_session()
-    _train_gensim(GENSIM_MODEL_FILE)
+    calculate_basic_metrics()
 
 
 @app.command()
-def calc_similarity(lang: str, model: str = None):
-    model = model or path.join(MODELS_DIR, 'default.bin')
-    calculate(model, lang)
+def calc_term_entropy():
+    init_session()
+    calculate_term_entropy()
 
 
 @app.command()
@@ -92,10 +115,9 @@ def extract_functions(lang=None):
     Functions.extract(langs)
 
 
-# Uses OpenAI
 @app.command()
-def classify(lang: str, outdir: str = "build/classified2", limit: int = 200):
-    _classify(lang, outdir, limit)
+def plot_similarity(verbose: bool = False):
+    _plot_similarity(verbose)
 
 
 @app.command()
@@ -109,8 +131,8 @@ def rate_relevancy_llm(repo_id: int):
 
 
 @app.command()
-def classify_repo_llm(repo_id: int):
-    classify_repo(repo_id)
+def classify_repo_llm():
+    classify_all_repos()
 
 
 # Extract grammar for each function, uses
@@ -118,46 +140,6 @@ def classify_repo_llm(repo_id: int):
 def extract_grammar():
     init_session()
     Grammar.extract()
-
-
-@app.command()
-def calculate_metrics(lang: str, model: str, indir: str = None):
-    """
-    - [ ] Identifier length\n
-    - [ ] Syllable count\n
-    - [ ] Soft word count\n
-    - [ ] Number of unique/duplicate identifiers\n
-    - [ ] Number of single letter identifiers\n
-    - [ ] Most common casing style\n
-    - [x] Percent of abbreviations\n
-    - [x] Percent of dictionary words\n
-    - [x] External similarity\n
-    - [x] Grammatical patterns\n
-
-    - [x] Term entropy\n
-    - [CHECK] Context coverage\n
-
-    - [WIP] Word concreteness\n
-
-    - [CHECK] Conciseness & consistency violations\n
-
-    - [WIP] Semantic similarity\n (NTLK model)
-    Add support for 2 context windows
-
-    - [WIP] Levenshtein distance (within function, within identifiers)\n
-    - [ ] Lexical diversity (TTR)\n
-
-    - [ ] Lexical bad smells\n
-    """
-    indir = indir or path.join(PROJECTS_DIR, lang.lower())
-    # model = model or path.join(MODELS_DIR, 'default.bin')
-    calc_basic(indir, model)
-
-
-@app.command()
-def calc_term_entropy():
-    init_session()
-    get_term_entropy(257787813)
 
 
 # TODO: Only download repos that are not already downloaded
@@ -198,54 +180,6 @@ def clone(force: bool = False, only_missing: bool = False):
     """
     init_session()
     clone_repos(DATA_DIR, force, only_missing)
-
-
-@app.command()
-def clean(lang: str):
-    """
-    Remove non-code files from project directories for a given language.
-    Command will print summary of files to be removed and ask for confirmation. Example:
-
-        python main.py clean elixir
-    """
-    exts = set(get_exts(lang))
-    to_remove = []
-
-    for root, _, files in os.walk(f"data/{lang}"):
-        for file in files:
-            name, ext = os.path.splitext(file)
-
-            if not ext.lower() in exts and (name != "README" or name != "readme"):
-                file_path = os.path.join(root, file)
-                to_remove.append(file_path)
-
-    if not to_remove:
-        console.print("No files to remove")
-        return
-
-    # Count files by extension
-    ext_counts = {}
-    for file_path in to_remove:
-        _, ext = os.path.splitext(file_path)
-        ext = ext.lower()  # Normalize extensions to lowercase
-        ext_counts[ext] = ext_counts.get(ext, 0) + 1
-
-    console.print("\nSummary of files to be removed:")
-    for ext, count in sorted(ext_counts.items(), key=lambda x: x[1]):
-        console.print(f"{ext}: {count}")
-
-    console.print(f"\nAccepted extensions: {exts}")
-    console.print(f"\nTotal files to remove: {len(to_remove)}, continue? (Y/n)")
-
-    if console.input() == 'Y':
-        console.print("Removing files...")
-
-        for file in to_remove:
-            os.remove(file)
-
-        console.print("Done")
-    else:
-        console.print("Aborting...")
 
 
 if __name__ == "__main__":
