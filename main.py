@@ -16,9 +16,10 @@ from scripts.lang import LANGS, get_exts
 from scripts.training.train_fasttext import train as _train_fasttext
 from scripts.similarity.calculate_similarity_per_project import calculate
 from scripts.metrics.term_entropy import calculate_term_entropy
-from scripts.metrics.llm.rate import rate_lexicon, rate_relevancy, classify_all_repos
+from scripts.metrics.llm.rate import classify_all_repos
 from scripts.metrics.basic import calculate_basic_metrics
 from scripts.similarity.calculate_similarity_from_sampled import plot_similarity as _plot_similarity
+from scripts.plot.basic_metrics import BasicMetrics
 
 console = Console()
 app = typer.Typer()
@@ -73,14 +74,13 @@ def calc_basic_metrics():
     - Percent of dictionary words\n
     - Levenshtein distance (within function)\n (add within identifiers?)
     - Conciseness & consistency violations\n
-
     - Term entropy\n
-    - Semantic similarity\n (NTLK model) (add support for 2 context windows)
+    - Semantic similarity\n
     - Grammatical patterns\n
 
-    - [WIP] External similarity\n
-    - [WIP] Context coverage\n
-    - [WIP] Word concreteness\n
+    - External similarity\n
+    - Context coverage\n
+    - Word concreteness\n
     """
     init_session()
     calculate_basic_metrics()
@@ -90,6 +90,19 @@ def calc_basic_metrics():
 def calc_term_entropy():
     init_session()
     calculate_term_entropy()
+
+
+@app.command()
+def plot(metric, domain):
+    init_session()
+    fn = getattr(BasicMetrics, f"plot_{metric}")
+    fn(domain)
+
+
+@app.command()
+def plot_id_percent_dict_words():
+    init_session()
+    BasicMetrics.plot_id_percent_dictionary_words()
 
 
 @app.command()
@@ -123,6 +136,11 @@ def plot_similarity(verbose: bool = False):
 @app.command()
 def rate_lexicon_llm(repo_id: int):
     rate_lexicon(repo_id)
+
+
+@app.command()
+def rate_relatedness_llm():
+    rate_relatedness()
 
 
 @app.command()

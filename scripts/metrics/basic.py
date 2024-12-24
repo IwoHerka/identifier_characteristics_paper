@@ -2,6 +2,7 @@ import itertools
 import csv
 import os
 import wordninja
+from multiprocessing import Pool
 import sys
 from itertools import combinations
 import syllapy
@@ -11,7 +12,7 @@ from os import path
 from statistics import median
 from Levenshtein import distance as levenshtein_distance
 from rich.console import Console
-from db.utils import get_functions, update_function_metrics
+from db.utils import get_functions_for_repo, update_function_metrics, commit, get_repos, init_local_session
 
 from ..utils import unique_pairs
 from .utils import load_abbreviations, split_compound, is_dict_word
@@ -21,6 +22,8 @@ from .external_similarity import get_external_similarity
 
 csv.field_size_limit(sys.maxsize)
 console = Console()
+
+POOL_SIZE = 8
 
 
 def get_median_length(names):
@@ -152,62 +155,81 @@ def get_duplicate_percentage(names):
     return duplicate_count / total_words
 
 
-def calculate_basic_metrics():
+def calculate_basic_metrics_for_repo(repo_id):
+    session = init_local_session()
     abbreviations = load_abbreviations("build/abbreviations.csv")
-    # TODO: Check which metrics should use unique words
-    # TODO: Remove preprended _
+    count = 0
 
-    for function in get_functions():
-        console.print(f"Processing {function.name}", style="yellow")
-        names = function.names.split(" ")
-        metrics = get_basic_metrics(names, abbreviations)
-        update_function_metrics(function, "basic", metrics)
+    try:
+        for function in get_functions_for_repo(repo_id, session):
+            if function.median_id_length is not None:
+                continue
+
+            console.print(f"({count}) {function.name}", style="yellow")
+            names = function.names.split(" ")
+            metrics = get_basic_metrics(names, abbreviations)
+            count += 1
+
+            for key, value in metrics.items():
+                setattr(function, key, value)
+
+            session.commit()
+    finally:
+        session.close()
+
+
+def calculate_basic_metrics():
+    repo_ids = [repo.id for repo in get_repos().all()]
+
+    with Pool(POOL_SIZE) as p:
+        # Use the pool to map the function to the repo_ids with a specified chunk size
+        p.map(calculate_basic_metrics_for_repo, repo_ids, chunksize=10)
 
 
 def get_basic_metrics(names, abbreviations):
     metrics = {}
 
     # 1. Median identifier length (multigram, non-unique)
-    metrics["median_length"] = get_median_length(names)
+    metrics["median_id_length"] = get_median_length(names)
 
     # 2. Median syllable count (multigram, non-unique)
     syllable_counts = [get_syllable_count(name) for name in names]
-    metrics["median_syllable_count"] = median(syllable_counts)
+    metrics["median_id_syllable_count"] = median(syllable_counts)
 
     # 3. Median soft word count (soft-words, non-unique)
     soft_word_counts = [len(get_soft_words(name)) for name in names]
     metrics["median_soft_word_count"] = median(soft_word_counts)
 
     # 4. Ratio of unique to duplicate identifiers (multigram, non-unique)
-    metrics["duplicate_percentage"] = get_duplicate_percentage(names)
+    metrics["id_duplicate_percentage"] = get_duplicate_percentage(names)
 
     # 5. Number of single letter identifiers (multigram, non-unique)
     single_letter_names = [name for name in names if len(name) == 1]
-    metrics["num_single_letter_names"] = len(single_letter_names)
+    metrics["num_single_letter_ids"] = len(single_letter_names)
 
     # 6. Most common casing style (multigram, non-unique)
     casing_styles = [get_casing_style(name) for name in names]
-    metrics["most_common_casing_style"] = max(set(casing_styles), key=casing_styles.count)
+    metrics["id_most_common_casing_style"] = max(set(casing_styles), key=casing_styles.count)
 
     # 7. Percent of abbreviations (soft-words, non-unique)
     soft_words = [word for name in names for word in get_soft_words(name)]
-    metrics["percent_abbreviations"] = get_num_abbreviations(abbreviations, soft_words) / len(soft_words)
+    metrics["id_percent_abbreviations"] = get_num_abbreviations(abbreviations, soft_words) / len(soft_words)
 
     # 8. Percent of dictionary words (soft-words, non-unique)
-    metrics["percent_dictionary_words"] = get_num_dictionary_words(soft_words) / len(soft_words)
+    metrics["id_percent_dictionary_words"] = get_num_dictionary_words(soft_words) / len(soft_words)
 
     # 9. Levenshtein distance (multigram, non-unique)
     pairs = list(combinations(names, 2))
     if len(pairs) > 0:
-        metrics["median_levenshtein_distance"] = get_median_levenshtein_distance(pairs)
+        metrics["median_id_lv_dist"] = get_median_levenshtein_distance(pairs)
     else:
-        metrics["median_levenshtein_distance"] = None
+        metrics["median_id_lv_dist"] = None
 
     # 10. Conciseness & consistency violations (soft-words, unique)
     names = [get_soft_words(name) for name in set(names)]
     consistency_violations, conciseness_violations = get_conciseness_and_consistency(names)
-    metrics["consistency_violations"] = consistency_violations
-    metrics["conciseness_violations"] = conciseness_violations
+    metrics["num_consistency_violations"] = consistency_violations
+    metrics["num_conciseness_violations"] = conciseness_violations
 
     return metrics
 

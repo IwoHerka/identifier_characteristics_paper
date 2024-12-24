@@ -44,7 +44,7 @@ def get_top_repos_by_language(language, num, page):
         return []
 
 
-def clone_repos(dest_dir, force=False, only_missing=False):
+def clone_repos(dest_dir, force=False, only_missing=False, verbose=False):
     """
     Clone repository for each repo in 'repos' table. For each repo, fill in
     'path' and 'readme' columns.
@@ -95,7 +95,8 @@ def clone_repos(dest_dir, force=False, only_missing=False):
         with open(sparse_checkout_path, "w") as sparse_file:
             if file_extensions:
                 for extension in file_extensions:
-                    console.print(f"Adding {extension} to sparse checkout")
+                    if verbose:
+                        console.print(f"Adding {extension} to sparse checkout")
                     sparse_file.write(f"*{extension}\n")
             else:
                 sparse_file.write("*\n")  # Checkout all files if no extension is specified

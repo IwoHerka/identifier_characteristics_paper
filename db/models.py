@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Float
 from sqlalchemy.orm import relationship
 from db.engine import Base
 
@@ -12,17 +12,14 @@ class Repo(Base):
     size = Column(Integer)
     lang = Column(String)
     owner = Column(String)
-    # functions = relationship("Function", back_populates="repo", cascade="all, delete, delete-orphan")
-
-    # Meta & stats
     type = Column(String, nullable=True, default=None)
     desc = Column(String, nullable=True, default=None)
     path = Column(String, nullable=True, default=None)
     readme = Column(String, nullable=True, default=None)
-    # TODO: Downloaded at
 
-
-# class File?
+    @staticmethod
+    def all(session):
+        return session.query(Repo).all()
 
 
 class Function(Base):
@@ -35,22 +32,25 @@ class Function(Base):
     file_name = Column(String)
     lang = Column(String)
     order = Column(Integer)
-    grammar = Column(String)
 
-    relevant = Column(Boolean, nullable=True, default=None)
     metrics = Column(String, nullable=True, default=None)
 
-    # median similarity
-    # mean similarity
+    grammar                       = Column(String, nullable=True)
+    median_id_semantic_similarity = Column(Float, nullable=True)
+    median_id_length              = Column(Float, nullable=True)
+    median_id_syllable_count      = Column(Float, nullable=True) 
+    median_id_soft_word_count     = Column(Float, nullable=True)
+    id_duplicate_percentage       = Column(Float, nullable=True)
+    num_single_letter_ids         = Column(Float, nullable=True)
+    id_most_common_casing_style   = Column(String, nullable=True)
+    id_percent_abbreviations      = Column(Float, nullable=True)
+    id_percent_dictionary_words   = Column(Float, nullable=True)
+    median_id_lv_dist             = Column(Float, nullable=True)
+    num_consistency_violations    = Column(Float, nullable=True)
+    num_conciseness_violations    = Column(Float, nullable=True)
 
-    # median body length
-    # num body duplicates
-    # num single letters
-    # casing style?
-    # num abbreviations?
-    # num dictionary words
-    # median levenshtein_distance
-    # body term entropy
-    # body context coverage
-    # get all functions/files (contexts) in which specific word occurs
-    # and calculate similarity of those contexts
+    term_entropy = Column(Float, nullable=True)
+    # context_coverage = Column(Float, nullable=True)
+    # word_concreteness = Column(Float, nullable=True)
+    # external_similarity = Column(Float, nullable=True)
+    # grammatical_pattern = Column(String, nullable=True)

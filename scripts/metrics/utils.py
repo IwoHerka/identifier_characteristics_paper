@@ -37,21 +37,12 @@ nlp = spacy.load("en_core_web_sm")
 
 
 def is_dict_word(word):
-    # Check if the word is close to any valid dictionary word
-    if d.check(word) or any(d.suggest(word)):
-        # Try lemmatizing and checking the word with NLTK
-        lemma_nltk = lemmatizer.lemmatize(word.lower())
-        if lemma_nltk in word_list:
-            return True
+    lemma_nltk = lemmatizer.lemmatize(word.lower())
 
-        # Try lemmatizing and checking the word with SpaCy
-        doc = nlp(word.lower())
-        lemma_spacy = [token.lemma_ for token in doc][0]  # Get lemma of the first token
-        if lemma_spacy in word_list:
-            return True
+    if lemma_nltk in word_list:
+        return True
 
-    # If neither check passes, the word is not valid
-    return False
+    return d.check(lemma_nltk)
 
 
 def load_abbreviations(file_path: str) -> dict:

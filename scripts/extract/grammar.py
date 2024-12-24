@@ -4,11 +4,13 @@ from multiprocessing import Process
 
 import requests
 from rich.console import Console
+import re
 
 from db.engine import get_engine
 from db.utils import (
     get_distinct_function_names_without_grammar,
     update_function_grammar,
+    init_local_session
 )
 
 TAGGER_BASE_PORT = 5000
@@ -24,8 +26,8 @@ class Grammar:
         processes = []
 
         for i in range(NUM_PROCESSES):
-            chunk = __get_chunk(fn_names, i, NUM_PROCESSES)
-            p = Process(target=__process, args=(chunk, TAGGER_BASE_PORT + i))
+            chunk = Grammar.__get_chunk(fn_names, i, NUM_PROCESSES)
+            p = Process(target=Grammar.__process, args=(chunk, TAGGER_BASE_PORT + i))
             p.start()
             processes.append(p)
 
@@ -40,7 +42,8 @@ class Grammar:
         try:
             response = requests.get(f"http://localhost:{port}/{name}/FUNCTION")
             return ".".join(response.json())
-        except:
+        except Exception as e:
+            console.print(e)
             return ""
 
     @staticmethod
@@ -58,9 +61,17 @@ class Grammar:
 
     @staticmethod
     def __process(names, port):
-        session = new_session(get_engine())
+        session = init_local_session()
 
-        for i, name in enumerate(names):
-            console.print(f"Checking name: {name}...")
-            grammar = __get_grammar(name, port)
-            update_function_grammar(session, name, grammar)
+        try:
+            for i, name in enumerate(names):
+                name = re.sub(r'[^\w-]', '', name)
+                name = re.sub(r'\d+$', '', name)
+                if name != '':
+                    grammar = Grammar.__get_grammar(name, port)
+                    console.print(f"'{name}' -> {grammar}")
+                    update_function_grammar(session, name, grammar)
+        except Exception as e:
+            console.print(e)
+        finally:
+            session.close()

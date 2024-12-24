@@ -41,7 +41,7 @@ from statistics import median
 from collections import defaultdict
 from rich.console import Console
 
-from db.utils import get_functions_for_repo, get_repos, update_function_metrics
+from db.utils import get_functions_for_repo, get_repos, update_function_metrics, init_local_session
 
 console = Console()
 
@@ -75,9 +75,11 @@ def calculate_term_entropy(normalize=False):
     
         H(foo) = - (2/3 * log(2/3) + 1/3 * log(1/3))= 0.9183
     """
+    session = init_local_session()
+
     for repo in get_repos():
         console.print(f"Calculating term entropy for repo {repo.id}")
-        functions = get_functions_for_repo(repo.id)
+        functions = get_functions_for_repo(repo.id, session)
 
         # Step 1: Build identifier occurrence matrix
         identifier_entity_matrix = defaultdict(lambda: defaultdict(int))
@@ -125,5 +127,7 @@ def calculate_term_entropy(normalize=False):
             for name in names:
                 entropies.append(identifier_entropy_results[name])
 
-            update_function_metrics(function, "median_term_entropy", median(entropies))
+            # update_function_metrics(function, "median_term_entropy", median(entropies))
+            function.term_entropy = median(entropies)
+            session.commit()
             console.print(f"Median term entropy for {function.name}: {median(entropies)}")

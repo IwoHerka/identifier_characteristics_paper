@@ -11,12 +11,27 @@ from db.models import Repo, Function
 
 session = None
 
+# import logging
+
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+
+def commit():
+    session.commit()
+
 
 def init_session():
     global session
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
+
+
+def init_local_session():
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    return Session()
 
 
 def new_session(engine):
@@ -44,7 +59,22 @@ def get_repos():
 
 
 def get_repos_by_lang(lang):
-    return session.query(Repo).filter(Repo.lang == lang).all()
+    types = ["WEB", "DB", "CLI", "BUILD", "OTHER", "ML"]
+    repos_by_type = {typ: session.query(Repo).filter(Repo.lang == lang, Repo.type == typ).all() for typ in types}
+
+    min_count = min(len(repos) for repos in repos_by_type.values())
+    
+    balanced_repos = []
+    for typ in types:
+        balanced_repos.extend(repos_by_type[typ][:min_count + 10])
+   
+    for typ in types:
+        print(f"{typ}: {len(repos_by_type[typ][:min_count + 10])} repos")
+    return balanced_repos
+
+
+def get_repos_by_type(lang, typ):
+    return session.query(Repo).filter(Repo.lang == lang, Repo.type == typ).all()
 
 
 def get_repos_without_functions(lang):
@@ -52,7 +82,8 @@ def get_repos_without_functions(lang):
         session.query(Repo)
         .filter(Repo.lang == lang)
         .outerjoin(Function, Repo.id == Function.repo_id)
-        .filter(Function.id == None)
+        .group_by(Repo.id)
+        .having(func.count(Function.id).between(100, 200))
         .all()
     )
 
@@ -88,8 +119,16 @@ def get_functions():
     return session.query(Function).all()
 
 
-def get_functions_for_repo(repo_id):
+def get_functions_for_repo(repo_id, session):
     return session.query(Function).filter_by(repo_id=repo_id).all()
+
+
+def get_by_metric(repo_id, metric, session):
+    field = getattr(Function, metric)
+    return session.query(field) \
+                  .filter_by(repo_id=repo_id) \
+                  .filter(field.isnot(None)) \
+                  .all()
 
 
 def get_distinct_function_for_project():
@@ -110,7 +149,7 @@ def get_training_text_for_repo(repo_id):
     """
     functions = (
         session.query(Function)
-        .filter_by(repo_id=repo_id)
+        .filter_by(repo_id=repo_id, lang="javascript")
         .order_by(asc(Function.file_name), asc(Function.order))
         .all()
     )
@@ -138,7 +177,7 @@ def get_grammar_by_name(name):
 def get_distinct_function_names_without_grammar():
     names = (
         session.query(Function.name)
-        .filter((Function.grammar == None) | (Function.grammar == ""))
+        # .filter((Function.grammar == None) | (Function.grammar == ""))
         .distinct()
         .all()
     )
@@ -154,17 +193,17 @@ def update_function_grammar(session, name, new_grammar):
 
 
 def update_function_metrics(function, keys, value):
-    if function.metrics:
-        metrics = function.metrics
-    else:
-        metrics = {}
+    # if function.metrics:
+    #     metrics = function.metrics
+    # else:
+    #     metrics = {}
 
-    if type(keys) is list:
-        metrics[keys[0]] = {keys[1]: value}
-    else:
-        metrics[keys] = value
+    # if type(keys) is list:
+    #     metrics[keys[0]] = {keys[1]: value}
+    # else:
+    #     metrics[keys] = value
 
-    function.metrics = json.dumps(metrics)
+    # function.metrics = json.dumps(metrics)
     session.commit()
 
 

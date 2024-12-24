@@ -39,6 +39,7 @@ namecompare = "^0.0.7"
 wordninja = "^2.0.0"
 syllapy = "^0.7.2"
 casestyle = "^0.0.4"
+transformers = "^4.47.1"
 
 
 [build-system]

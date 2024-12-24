@@ -23,7 +23,7 @@ def train(training_path, output_dir):
 
     console.print(f"Training fasttext model with window size 5...")
     model = fasttext.train_unsupervised(
-        training_path, "cbow", minCount=3, lr=0.1, ws=5, epoch=5, dim=100, thread=24
+        training_path, "skipgram", minCount=3, lr=0.1, ws=5, epoch=5, dim=100, thread=24
     )
     model.save_model(os.path.join(output_dir, "fasttext_5ws.bin"))
 

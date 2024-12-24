@@ -28,16 +28,16 @@ def extract_repo(repo, lang):
     console.print(
         f"Processing {repo_name} ({lang}) -> {repo_path}", style="bold red"
     )
+    session = new_session(get_engine())
 
-    for file in list_files(repo_path):
-        if "README.md" in file or not is_ext_valid(lang, file):
-            continue
+    try:
+        for file in list_files(repo_path):
+            if "README.md" in file or not is_ext_valid(lang, file):
+                continue
 
-        console.print(f"Processing file: {file}")
-        file_order = 1
+            console.print(f"Processing file: {file}")
+            file_order = 1
 
-        try:
-            session = new_session(get_engine())
             fnames = extract(parser, file, globals()[f"extract_{lang}"])
 
             for fname, names in fnames.items():
@@ -50,19 +50,20 @@ def extract_repo(repo, lang):
                     break
 
             successes.append(file)
-        except RecursionError as e:
-            pass
-        except FileNotFoundError:
-            pass
-        except Exception as e:
-            # TODO: Log more info
-            console.print(file)
-            errors.append(file)
 
-        if extracted_functions >= MAX_FUNCTIONS:
-            break
-
-    return [successes, errors]
+            if extracted_functions >= MAX_FUNCTIONS:
+                break
+    except RecursionError as e:
+        pass
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        # TODO: Log more info
+        console.print(file)
+        errors.append(file)
+    finally:
+        session.close()
+        return [successes, errors]
 
 def list_files(directory):
     console.print(directory)
@@ -80,10 +81,13 @@ class Functions:
             repos = get_repos_without_functions(lang=lang)
             console.print(repos)
 
-            with Pool(POOL_SIZE) as p:
-                result = p.starmap(extract_repo, [((repo.id, repo.name, repo.path), lang) for repo in repos])[0]
-                results[0].extend(result[0])
-                results[1].extend(result[1])
+            for repo in repos:
+                extract_repo((repo.id, repo.name, repo.path), lang)
 
-        console.print(f"Successes: {len(results[0])}, failures: {len(results[1])}")
-        console.print(results[1])
+        #     with Pool(POOL_SIZE) as p:
+        #         result = p.starmap(extract_repo, [((repo.id, repo.name, repo.path), lang) for repo in repos])[0]
+        #         results[0].extend(result[0])
+        #         results[1].extend(result[1])
+
+        # console.print(f"Successes: {len(results[0])}, failures: {len(results[1])}")
+        # console.print(results[1])
