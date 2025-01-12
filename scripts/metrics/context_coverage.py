@@ -1,52 +1,74 @@
-import numpy as np
 from gensim import corpora, models, similarities
+from sklearn.preprocessing import normalize
+import numpy as np
+from rich.console import Console
+
+console = Console()
 
 
 def get_context_coverage(texts, target_words):
     """
-    Calculate the normalized context coverage for a specific word in a given collection of documents.
-    Returns the normalized context coverage score for the target word, scaled between 0 and 1.
-    """
+    Calculate the normalized context coverage score for each target word.
 
+    Args:
+        texts (list of list of str): A list of tokenized texts.
+        target_words (list of str): A list of target words to analyze.
+
+    Returns:
+        dict: A dictionary where keys are target words, and values are their normalized context coverage scores.
+    """
     # Create a dictionary and corpus
     dictionary = corpora.Dictionary(texts)
     corpus = [dictionary.doc2bow(text) for text in texts]
 
+    console.print(f"Starting to train LSI model", style="yellow")
+
     # Initialize an LSI model
     lsi = models.LsiModel(corpus, id2word=dictionary, num_topics=100)
 
-    # Create a similarity index
+    # Create a similarity index for the corpus
     index = similarities.MatrixSimilarity(lsi[corpus])
 
+    console.print(f"LSI model trained", style="green")
+
+    # Cache for pairwise similarities
+    similarity_cache = {}
+
+    # Store context coverage scores
+    context_coverage_scores = {}
+
     for target_word in target_words:
-        # Check if the target word is in the dictionary
+        # Check if the target word exists in the dictionary
         if target_word not in dictionary.token2id:
-            raise ValueError("Target word not found in the texts.")
+            context_coverage_scores[target_word] = 0
+            continue
 
-        # Find documents that contain the target word
+        # Get the word ID and find texts containing the target word
         word_id = dictionary.token2id[target_word]
-        # This can be optimized
-        relevant_docs_indices = [i for i, doc in enumerate(texts) if target_word in doc]
+        relevant_docs_indices = [i for i, text in enumerate(texts) if target_word in text]
 
+        # If fewer than 2 documents contain the word, context coverage is undefined
         if len(relevant_docs_indices) < 2:
-            # Need at least two documents to calculate similarity
-            return 0
+            context_coverage_scores[target_word] = 0
+            continue
 
-        # Calculate similarities between documents containing the target word
-        sims = []
-        for i in range(len(relevant_docs_indices)):
-            for j in range(i + 1, len(relevant_docs_indices)):
-                sim = index[lsi[corpus[relevant_docs_indices[i]]]][
-                    relevant_docs_indices[j]
-                ]
-                sims.append(sim if sim > 0 else 0)  # Ensure non-negative similarities
+        # Calculate pairwise similarities between relevant documents
+        similarities_list = []
+        for i, doc_idx_1 in enumerate(relevant_docs_indices[:10]):
+            for doc_idx_2 in relevant_docs_indices[i + 1:]:
+                pair = (doc_idx_1, doc_idx_2)
+                if pair not in similarity_cache:
+                    sim = index[lsi[corpus[doc_idx_1]]][doc_idx_2]
+                    similarity_cache[pair] = sim if sim > 0 else 0
+                similarities_list.append(similarity_cache[pair])
 
-        # Compute normalized context coverage
-        N = len(sims)
+        # Compute normalized context coverage as the average similarity
+        N = len(similarities_list)
         if N > 0:
-            normalized_CC = np.mean(
-                sims
-            )  # Directly calculates the average of similarities
-            yield (target_word, normalized_CC)
+            normalized_cc = np.mean(similarities_list)
         else:
-            yield (target_word, 0)
+            normalized_cc = 0
+
+        context_coverage_scores[target_word] = normalized_cc
+
+    return context_coverage_scores

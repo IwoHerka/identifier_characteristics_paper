@@ -19,6 +19,7 @@ console = Console()
 
 LLM_MODEL = "llama3.2"
 LLM_MODEL = "gemma2:9b"
+LLM_MODEL = "deepseek-coder-v2:16b"
 
 
 def rate_relatedness():
@@ -31,8 +32,8 @@ def rate_relatedness():
 
         for name1, name2 in pairs:
             prompt = f"""
-      Rate how related are two identifiers '{name1}' and '{name2}' from 1 to 5. Only reply with: I score it as <score>
-      """
+            Rate how related are two identifiers '{name1}' and '{name2}' from 1 to 5. Only reply with: I score it as <score>
+            """
 
             url = "http://localhost:11434/api/generate"
             payload = {"model": LLM_MODEL, "prompt": prompt, "stream": False}
@@ -64,19 +65,18 @@ def classify_all_repos(only_retry=False):
     random.shuffle(repos)
 
     for repo in repos:
-        if repo.readme is None or repo.lang not in ["python", "ocaml"]:
+        console.print(repo.name)
+        if repo.readme is None:
             continue
 
-        if only_retry and (repo.type or repo.type == "unknown"):
+        if only_retry:
             continue
-        
+
         if repo.type == repo.type.upper():
           continue
 
-        if repo.type:
-          types = repo.type.split(' ')
-          if len(types) == 3 and types[0] == types[1] and types[1] == types[2]:
-            repo.type = types[0].upper()
+        types = repo.type.split(' ')
+        if len(types) != 4:
             continue
 
         # if repo.type is not None:

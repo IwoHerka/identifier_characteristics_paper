@@ -13,7 +13,7 @@ from statistics import median
 from Levenshtein import distance as levenshtein_distance
 from rich.console import Console
 from db.utils import get_functions_for_repo, update_function_metrics, commit, get_repos, init_local_session
-
+from db.models import Repo, Function
 from ..utils import unique_pairs
 from .utils import load_abbreviations, split_compound, is_dict_word
 from .cc import get_conciseness_and_consistency
@@ -23,7 +23,7 @@ from .external_similarity import get_external_similarity
 csv.field_size_limit(sys.maxsize)
 console = Console()
 
-POOL_SIZE = 8
+POOL_SIZE = 4
 
 
 def get_median_length(names):
@@ -105,37 +105,51 @@ def get_median_levenshtein_distance(word_pairs):
         return None
 
 
-def calc_context_coverage(file, abbreviations, model, project):
-    all_names = []
+def calculate_context_coverage():
+    session = init_local_session()
+    count = 0
 
-    with open(file, newline="") as file:
-        reader = csv.reader(file, delimiter=",")
-        # func_to_names = dict()
-        word_to_contexts = dict()
+    for repo in Repo.all(session, lang="python")[:25]:
+        console.print(f"Calculating context coverage for {repo.name}", style="red")
+        all_names = set()
+        all_function_bodies = []
+        functions = Function.filter_by(session, repo_id=repo.id)
 
-        for row in reader:
-            func_name = row[0].split("#")[0]
-            names = set(row[1].split(" "))
-            names = [list(split_compound(name)) for name in names]
-            names = set(itertools.chain.from_iterable(names))
+        console.print(f"Found {len(functions)} functions", style="red")
 
-            all_names.append(names)
+        if count > 25:
+            break
 
-            for name in names:
-                if name in word_to_contexts:
-                    word_to_contexts[name].append(names)
-                else:
-                    word_to_contexts[name] = [names]
+        if len(functions) < 100:
+            continue
+        else:
+            count += 1
 
-    # print(all_names)
-    # for (name, _names) in word_to_contexts.items():
-    names = word_to_contexts.keys()
-    # print(_names)
-    coverage = get_context_coverage(all_names, names)
+        functions = [function for function in functions if 'test' not in function.name]
 
-    for name, c in coverage:
-        console.print(f"Context coverage for {name} -> {c}", style="yellow")
-        # break
+        for function in functions[:1000]:
+            names = function.names.split(" ")
+            all_function_bodies.append(names)
+
+        for function in functions[:100]:
+            names = function.names.split(" ")[:10]
+            all_names.update(names)
+
+        all_names = list(all_names)
+        values = get_context_coverage(all_function_bodies, all_names)
+
+        for function in functions[:100]:
+            console.print(f"Calculating context coverage for {function.name}", style="yellow")
+            names = function.names.split(" ")
+            scores = []
+
+            for name, value in values.items():
+                if name in names:
+                    scores.append(value)
+
+            if len(scores) > 0:
+                function.context_coverage = float(median(scores))
+                session.commit()
 
 
 def get_duplicate_percentage(names):
@@ -153,6 +167,32 @@ def get_duplicate_percentage(names):
         return 0.0
 
     return duplicate_count / total_words
+
+
+def calculate_common_grammar(langs):
+    lang_to_grammars = {}
+    
+    for lang in langs:
+        session = init_local_session()
+
+        grammars = Function.get_grammars_for_lang(lang, session, limit=25000)
+        from collections import Counter
+
+        # Flatten the list of grammars and count occurrences
+        grammar_list = [grammar for sublist in grammars for grammar in sublist]
+        grammar_counts = Counter(grammar_list)
+
+        # Get the 10 most common grammars
+        most_common_grammars = grammar_counts.most_common(10)
+
+        console.print(f"Most common grammars for {lang}:", style="yellow")
+
+        for grammar, count in most_common_grammars:
+            console.print(f"{grammar}: {count}", style="yellow")
+
+        lang_to_grammars[lang] = most_common_grammars
+
+    return lang_to_grammars
 
 
 def calculate_basic_metrics_for_repo(repo_id):
@@ -179,7 +219,8 @@ def calculate_basic_metrics_for_repo(repo_id):
 
 
 def calculate_basic_metrics():
-    repo_ids = [repo.id for repo in get_repos().all()]
+    session = init_local_session()
+    repo_ids = [repo.id for repo in Repo.all(session, selected=True)]
 
     with Pool(POOL_SIZE) as p:
         # Use the pool to map the function to the repo_ids with a specified chunk size
@@ -232,41 +273,3 @@ def get_basic_metrics(names, abbreviations):
     metrics["num_conciseness_violations"] = conciseness_violations
 
     return metrics
-
-
-
-# def calculate(base_dir, model):
-#     """
-#     Given a directory with a list of CSV files with function names for each
-#     project, calculate basic naming stats.
-#     """
-#     results = []
-
-#     # Build a list project files (one CSV per project) for specified language
-#     files = [os.path.join(base_dir, file) for file in list(os.listdir(base_dir))]
-#     console.print(f"Detected {len(files)} files", style="red")
-
-#     abbreviations = load_abbreviations("build/abbreviations.csv")
-#     console.print(f"Loaded {len(abbreviations)} abbreviations", style="yellow")
-
-#     model = fasttext.load_model(model)
-#     #model = None
-
-#     # Check only for grammar
-#     for file in files:
-#         if ".grammar.csv" in file:
-#             continue
-
-#         console.print(f"Processing {file}", style="yellow")
-
-#         project_name = path.basename(file).replace(".csv", "")
-#         info = get_basic_info(file, abbreviations, model, project_name)
-#         #info = calc_context_coverage(file, abbreviations, model, project_name)
-
-#     # Write summary to language project report CSV
-#     # with open(f'build/projects/reports/{lang}.csv', 'w', newline="") as summary_file:
-#     #     writer = csv.writer(summary_file, delimiter=",")
-
-#     #     results = [(file, median) for (file, median) in results if median]
-#     #     for project, median in sorted(results, key=lambda x: x[1]):
-#     #         writer.writerow([project, median])

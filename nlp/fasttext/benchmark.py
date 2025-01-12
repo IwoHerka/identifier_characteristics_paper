@@ -8,14 +8,24 @@ from scipy.spatial.distance import cosine
 
 console = Console()
 
+LLM_MODEL = "deepseek-coder-v2:16b"
+
 
 def rate_identifiers(name1, name2):
     prompt = f"""
-    Rate how related, ie. semantically similar, are two source code identifiers '{name1}' and '{name2}' from 1 to 10. Only reply with: I score it as <score>
+    In this experiment, I will give you two source code identifiers to rate their relatedness.
+    Example of related identifiers are: 'index' and 'idx', 'item' and 'record'.
+    Rate how similar the identifiers '{name1}' and '{name2}' are from 1 to 10. Only reply with: I score it as <score>
+    """
+
+    prompt = f"""
+    In this experiment, I will give you two source code identifiers to rate their similarity
+    Example of similar identifiers are: 'min' and 'max', 'nextText' and 'prevText'.
+    Rate how related identifiers '{name1}' and '{name2}' are from 1 to 10. Only reply with: I score it as <score>
     """
 
     url = "http://localhost:11434/api/generate"
-    payload = {"model": "llama3.2", "prompt": prompt, "stream": False}
+    payload = {"model": LLM_MODEL, "prompt": prompt, "stream": False}
     response = requests.post(url, json=payload)
 
     if response.status_code == 200:
@@ -41,25 +51,26 @@ def add_cosine_similarity_to_csv(csv_file, fasttext_model, output_file):
     df = pd.read_csv(csv_file)
 
     def calculate_similarity(row):
-        vec1 = fasttext_model.get_word_vector(row["id1"])
-        vec2 = fasttext_model.get_word_vector(row["id2"])
-        return 1 - cosine(vec1, vec2)
-        # rating = rate_identifiers(row["id1"], row["id2"])
-        # if rating:
-        #     return rating / 10
-        # else:
-        #     return 0.5
+        # vec1 = fasttext_model.get_word_vector(row["id1"])
+        # vec2 = fasttext_model.get_word_vector(row["id2"])
+        # return 1 - cosine(vec1, vec2)
+        rating = rate_identifiers(row["id1"], row["id2"])
+        if rating:
+            return rating / 10
+        else:
+            return 0.5
 
     df["Cosine_Similarity"] = df.apply(calculate_similarity, axis=1)
     df.to_csv(output_file, index=False)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-m", required=True, help="path to fastText model")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-m", required=True, help="path to fastText model")
+    # args = parser.parse_args()
+    model = None
 
-    model = fasttext.load_model(args.m)
+    # model = fasttext.load_model(args.m)
     add_cosine_similarity_to_csv("small_pair_wise.csv", model, "small_.csv")
     add_cosine_similarity_to_csv("medium_pair_wise.csv", model, "medium_.csv")
     add_cosine_similarity_to_csv("large_pair_wise.csv", model, "large_.csv")

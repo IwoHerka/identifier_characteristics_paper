@@ -3,6 +3,7 @@ import os
 from multiprocessing import Process
 
 import requests
+import time
 from rich.console import Console
 import re
 
@@ -24,6 +25,8 @@ class Grammar:
     def extract():
         fn_names = get_distinct_function_names_without_grammar()
         processes = []
+
+        # Grammar.__process(fn_names, TAGGER_BASE_PORT)
 
         for i in range(NUM_PROCESSES):
             chunk = Grammar.__get_chunk(fn_names, i, NUM_PROCESSES)
@@ -62,15 +65,24 @@ class Grammar:
     @staticmethod
     def __process(names, port):
         session = init_local_session()
+        last_commit_time = time.time()
 
         try:
-            for i, name in enumerate(names):
-                name = re.sub(r'[^\w-]', '', name)
-                name = re.sub(r'\d+$', '', name)
-                if name != '':
-                    grammar = Grammar.__get_grammar(name, port)
-                    console.print(f"'{name}' -> {grammar}")
-                    update_function_grammar(session, name, grammar)
+            for i, oname in enumerate(names):
+                if oname:
+                    name = re.sub(r'[^\w-]', '', oname)
+                    name = re.sub(r'\d+$', '', name)
+                    if name and len(name) > 1 and 'test' not in name:
+                        grammar = Grammar.__get_grammar(name, port)
+                        console.print(f"{oname} : {name} -> {grammar}")
+                        update_function_grammar(session, oname, grammar)
+
+                if i % 50 == 0:
+                    session.commit()
+                    current_time = time.time()
+                    elapsed_time = current_time - last_commit_time
+                    console.print(f"Commit completed. Time elapsed since last commit: {elapsed_time:.2f} seconds")
+                    last_commit_time = current_time
         except Exception as e:
             console.print(e)
         finally:

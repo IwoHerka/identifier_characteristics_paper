@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict
 import casestyle
+import random
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker, aliased
@@ -10,11 +11,6 @@ from db.engine import engine, Base
 from db.models import Repo, Function
 
 session = None
-
-# import logging
-
-# logging.basicConfig()
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 
 def commit():
@@ -77,19 +73,6 @@ def get_repos_by_type(lang, typ):
     return session.query(Repo).filter(Repo.lang == lang, Repo.type == typ).all()
 
 
-def get_repos_without_functions(lang):
-    repos_with_no_functions = (
-        session.query(Repo)
-        .filter(Repo.lang == lang)
-        .outerjoin(Function, Repo.id == Function.repo_id)
-        .group_by(Repo.id)
-        .having(func.count(Function.id).between(100, 200))
-        .all()
-    )
-
-    return repos_with_no_functions
-
-
 def get_lang_to_repo_ids_map():
     lang_to_repo_ids = defaultdict(list)
     results = session.query(Repo.lang, Repo.id).all()
@@ -149,7 +132,7 @@ def get_training_text_for_repo(repo_id):
     """
     functions = (
         session.query(Function)
-        .filter_by(repo_id=repo_id, lang="javascript")
+        .filter_by(repo_id=repo_id)
         .order_by(asc(Function.file_name), asc(Function.order))
         .all()
     )
@@ -175,21 +158,33 @@ def get_grammar_by_name(name):
 
 
 def get_distinct_function_names_without_grammar():
-    names = (
-        session.query(Function.name)
-        # .filter((Function.grammar == None) | (Function.grammar == ""))
+    names_by_lang = (
+        session.query(Function.name, Function.lang)
+        .join(Repo, Repo.id == Function.repo_id)
+        .filter(Repo.type == "WEB")
+        .filter((Function.grammar == None) | (Function.grammar == ""))
         .distinct()
         .all()
     )
 
-    return [name[0] for name in names]
+    lang_counts = {}
+    balanced_names = []
+
+    for name, lang in names_by_lang:
+        if lang not in lang_counts:
+            lang_counts[lang] = 0
+        if lang_counts[lang] < 10000:
+            balanced_names.append(name)
+            lang_counts[lang] += 1
+
+    random.shuffle(balanced_names)
+    return balanced_names
 
 
 def update_function_grammar(session, name, new_grammar):
     session.query(Function).filter(Function.name == name).update(
         {"grammar": new_grammar}
     )
-    session.commit()
 
 
 def update_function_metrics(function, keys, value):

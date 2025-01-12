@@ -9,10 +9,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+from sqlalchemy import func
 
 from scipy.stats import gaussian_kde
 from matplotlib.ticker import ScalarFormatter
 from scipy.spatial.distance import cosine
+from db.models import Repo, Function
 from db.utils import get_repos_by_lang, init_local_session, get_by_metric, get_repos_by_type
 from scripts.utils import overall_mean, overall_median
 from scripts.lang import LANGS
@@ -214,3 +216,37 @@ class BasicMetrics:
     @staticmethod
     def plot_word_concreteness(domain, verbose: bool = False):
         pass
+
+    @staticmethod
+    def plot_project_size():
+        session = init_local_session()
+        lang_project_sizes = {}
+
+        # Perform a single query with a join to count functions per repository
+        repo_function_counts = session.query(Repo.lang, Function.repo_id, func.count(Function.id).label('function_count')) \
+                                      .join(Function, Repo.id == Function.repo_id) \
+                                      .group_by(Repo.lang, Function.repo_id) \
+                                      .all()
+
+        for i, (lang, repo_id, num_functions) in enumerate(repo_function_counts):
+            console.print(f"Repo #{i}", style="yellow")
+
+            if lang not in lang_project_sizes:
+                lang_project_sizes[lang] = []
+
+            rounded_size = round(num_functions / 100) * 100
+            lang_project_sizes[lang].append(rounded_size)
+
+        plt.figure(figsize=(12, 8))
+
+        for lang, sizes in lang_project_sizes.items():
+            plt.hist(sizes, bins=range(0, max(sizes) + 100, 100), alpha=0.5, label=lang)
+
+        plt.xlabel('Project size (function count)')
+        plt.ylabel('Number of projects')
+        plt.title('Distribution of function counts per project')
+        plt.legend(loc='upper left')
+
+        plt.savefig("build/plots/project_sizes_per_language.png")
+        plt.close()
+        print("Plot saved to build/plots/project_sizes_per_language.png")

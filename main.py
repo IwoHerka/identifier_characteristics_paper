@@ -7,7 +7,8 @@ import typer
 from rich.console import Console
 from scipy.spatial.distance import cosine
 
-from db.utils import init_session
+from db.utils import init_session, init_local_session
+from db.models import Repo
 from scripts.metrics.llm.classify import classify as _classify
 from scripts.download import clone_repos, download_repos
 from scripts.extract.functions import Functions
@@ -17,7 +18,7 @@ from scripts.training.train_fasttext import train as _train_fasttext
 from scripts.similarity.calculate_similarity_per_project import calculate
 from scripts.metrics.term_entropy import calculate_term_entropy
 from scripts.metrics.llm.rate import classify_all_repos
-from scripts.metrics.basic import calculate_basic_metrics
+from scripts.metrics.basic import calculate_basic_metrics, calculate_common_grammar, calculate_context_coverage
 from scripts.similarity.calculate_similarity_from_sampled import plot_similarity as _plot_similarity
 from scripts.plot.basic_metrics import BasicMetrics
 
@@ -85,6 +86,27 @@ def calc_basic_metrics():
     init_session()
     calculate_basic_metrics()
 
+@app.command()
+def select_repos():
+    session = init_local_session()
+    Repo.select(session)
+
+
+@app.command()
+def print_breakdown():
+    session = init_local_session()
+    Repo.print_breakdown(session)
+
+
+@app.command()
+def calc_common_grammar():
+    calculate_common_grammar(LANGS)
+
+
+@app.command()
+def calc_context_coverage():
+    calculate_context_coverage()
+
 
 @app.command()
 def calc_term_entropy():
@@ -100,8 +122,13 @@ def plot(metric, domain):
 
 
 @app.command()
-def plot_id_percent_dict_words():
+def plot_project_size():
     init_session()
+    BasicMetrics.plot_project_size()
+
+
+@app.command()
+def plot_id_percent_dict_words():
     BasicMetrics.plot_id_percent_dictionary_words()
 
 
