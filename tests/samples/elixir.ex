@@ -15,6 +15,7 @@ result = add.(1, 2)
 
 defmodule Bar do
   def func(x) when is_number(x) do
+    add = &(&1 + &2)
     x ** 2
   end
 

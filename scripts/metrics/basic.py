@@ -109,21 +109,13 @@ def calculate_context_coverage():
     session = init_local_session()
     count = 0
 
-    for repo in Repo.all(session, lang="python")[:25]:
+    for repo in Repo.all(session, selected=False):
         console.print(f"Calculating context coverage for {repo.name}", style="red")
         all_names = set()
         all_function_bodies = []
         functions = Function.filter_by(session, repo_id=repo.id)
 
         console.print(f"Found {len(functions)} functions", style="red")
-
-        if count > 25:
-            break
-
-        if len(functions) < 100:
-            continue
-        else:
-            count += 1
 
         functions = [function for function in functions if 'test' not in function.name]
 
@@ -136,6 +128,10 @@ def calculate_context_coverage():
             all_names.update(names)
 
         all_names = list(all_names)
+
+        if len(all_names) == 0 or len(all_function_bodies) == 0:
+            continue
+        
         values = get_context_coverage(all_function_bodies, all_names)
 
         for function in functions[:100]:
@@ -162,7 +158,7 @@ def get_duplicate_percentage(names):
     duplicate_count = sum(1 for count in word_counts.values() if count > 1)
 
     # Calculate the percentage of duplicate words
-    total_words = len(names)
+    total_words = len(word_counts.keys())
     if total_words == 0:
         return 0.0
 
@@ -200,30 +196,29 @@ def calculate_basic_metrics_for_repo(repo_id):
     abbreviations = load_abbreviations("build/abbreviations.csv")
     count = 0
 
-    try:
-        for function in get_functions_for_repo(repo_id, session):
-            if function.median_id_length is not None:
-                continue
+    for function in Function.filter_by(session, repo_id=repo_id):
+        # try:
+        if function.median_id_length is not None:
+            continue
 
-            console.print(f"({count}) {function.name}", style="yellow")
-            names = function.names.split(" ")
-            metrics = get_basic_metrics(names, abbreviations)
-            count += 1
+        console.print(f"({count}) {function.name}", style="yellow")
+        names = function.names.split(" ")
+        metrics = get_basic_metrics(names, abbreviations)
+        count += 1
 
-            for key, value in metrics.items():
-                setattr(function, key, value)
+        for key, value in metrics.items():
+            setattr(function, key, value)
 
-            session.commit()
-    except Exception as e:
-        console.print(f"Error: {e}")
-        raise e
-    finally:
-        session.close()
+        session.commit()
+        # except Exception as e:
+        #     console.print(f"Error: {e}")
+        # finally:
+        #     session.close()
 
 
 def calculate_basic_metrics():
     session = init_local_session()
-    repo_ids = [repo.id for repo in Repo.all(session, selected=True)]
+    repo_ids = [repo.id for repo in Repo.all(session, selected=False)]
 
     for repo_id in repo_ids:
         calculate_basic_metrics_for_repo(repo_id)
@@ -245,7 +240,7 @@ def get_basic_metrics(names, abbreviations):
 
     # 3. Median soft word count (soft-words, non-unique)
     soft_word_counts = [len(get_soft_words(name)) for name in names]
-    metrics["median_soft_word_count"] = median(soft_word_counts)
+    metrics["median_id_soft_word_count"] = median(soft_word_counts)
 
     # 4. Ratio of unique to duplicate identifiers (multigram, non-unique)
     metrics["id_duplicate_percentage"] = get_duplicate_percentage(names)
@@ -259,9 +254,10 @@ def get_basic_metrics(names, abbreviations):
     metrics["id_most_common_casing_style"] = max(set(casing_styles), key=casing_styles.count)
 
     # 7. Percent of abbreviations (soft-words, non-unique)
-    # console.print(f"Calculating abbreviations")
+    console.print(f"Calculating abbreviations")
     soft_words = [word for name in names for word in get_soft_words(name)]
-    # metrics["id_percent_abbreviations"] = get_num_abbreviations(abbreviations, soft_words) / len(soft_words)
+    if len(soft_words) > 0:
+        metrics["id_percent_abbreviations"] = get_num_abbreviations(abbreviations, soft_words) / len(soft_words)
 
     # 8. Percent of dictionary words (soft-words, non-unique)
     console.print(f"Calculating dictionary words")

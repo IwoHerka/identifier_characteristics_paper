@@ -41,7 +41,8 @@ from statistics import median
 from collections import defaultdict
 from rich.console import Console
 
-from db.utils import get_functions_for_repo, get_repos, update_function_metrics, init_local_session
+from db.utils import get_functions_for_repo, update_function_metrics, init_local_session
+from db.models import Repo
 
 console = Console()
 
@@ -77,9 +78,14 @@ def calculate_term_entropy(normalize=False):
     """
     session = init_local_session()
 
-    for repo in get_repos():
+    for repo in Repo.all(session):
         console.print(f"Calculating term entropy for repo {repo.id}")
         functions = get_functions_for_repo(repo.id, session)
+
+        all_have_term_entropy = all(function.term_entropy is not None for function in functions)
+        if all_have_term_entropy:
+            console.print(f"All functions in repo {repo.id} already have term_entropy calculated. Skipping...")
+            continue
 
         # Step 1: Build identifier occurrence matrix
         identifier_entity_matrix = defaultdict(lambda: defaultdict(int))
@@ -128,6 +134,7 @@ def calculate_term_entropy(normalize=False):
                 entropies.append(identifier_entropy_results[name])
 
             # update_function_metrics(function, "median_term_entropy", median(entropies))
-            function.term_entropy = median(entropies)
-            session.commit()
-            console.print(f"Median term entropy for {function.name}: {median(entropies)}")
+            if len(entropies) > 0:
+                function.term_entropy = median(entropies)
+                session.commit()
+                console.print(f"Median term entropy for {function.name}: {median(entropies)}")

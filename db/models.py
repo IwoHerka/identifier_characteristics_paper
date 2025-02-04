@@ -21,6 +21,8 @@ class Repo(Base):
     desc = Column(String, nullable=True, default=None)
     path = Column(String, nullable=True, default=None)
     readme = Column(String, nullable=True, default=None)
+    comment = Column(String, nullable=True, default=None)
+    about = Column(String, nullable=True, default=None)
 
     @staticmethod
     def all(session, **kwargs):
@@ -52,8 +54,8 @@ class Repo(Base):
             session.query(Repo)
             .join(Function, Repo.id == Function.repo_id)
             .group_by(Repo.id)
-            .filter(Repo.type.in_(["WEB", "CLI", "DB", "BUILD", "OTHER", "ML"]))
-            .having(func.count(Function.id).between(250, 2000))
+            .filter(Repo.type.notin_(["WEB"]))
+            .having(func.count(Function.id).between(500, 2000))
             .all()
         )
         lang_repos = {}
@@ -66,12 +68,13 @@ class Repo(Base):
 
         for lang, repos in lang_repos.items():
             selected_repos = random.sample(repos, min(len(repos), 100))
-            for repo in selected_repos:
-                print(repo.name)
-                repo.selected = True
+            print(f"Selected {len(selected_repos)} repos for {lang}")
+        #     for repo in selected_repos:
+        #         print(repo.name)
+        #         repo.selected = True
 
-        session.commit()
-        session.close()
+        # session.commit()
+        # session.close()
 
     @staticmethod
     def print_breakdown(session):
@@ -142,4 +145,12 @@ class Function(Base):
         for key, value in kwargs.items():
             if hasattr(Function, key):
                 query = query.filter(getattr(Function, key) == value)
+        return query.all()
+
+    @staticmethod
+    def get_metrics(session, limit, metric):
+        query = session.query(Function)
+        query = query.filter(getattr(Function, metric).isnot(None))
+        query = query.limit(limit)
+        query = query.with_entities(getattr(Function, metric))
         return query.all()

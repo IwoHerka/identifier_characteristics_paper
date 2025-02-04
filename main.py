@@ -53,6 +53,11 @@ GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 
 
 @app.command()
+def classify():
+    _classify()
+
+
+@app.command()
 def train_fasttext():
     """
     Generates training file based on function names in database and trains
@@ -107,10 +112,12 @@ def calc_common_grammar():
 def calc_context_coverage():
     calculate_context_coverage()
 
+@app.command()
+def compare_factors():
+    BasicMetrics.compare_factors()
 
 @app.command()
 def calc_term_entropy():
-    init_session()
     calculate_term_entropy()
 
 
@@ -119,6 +126,11 @@ def plot(metric, domain):
     init_session()
     fn = getattr(BasicMetrics, f"plot_{metric}")
     fn(domain)
+
+@app.command()
+def verify_stat_significance():
+    init_session()
+    BasicMetrics.verify_stat_significance()
 
 
 @app.command()

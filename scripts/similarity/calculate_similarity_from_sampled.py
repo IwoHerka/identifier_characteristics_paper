@@ -9,9 +9,10 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 from matplotlib.ticker import ScalarFormatter
+from db.models import Repo
 from scipy.spatial.distance import cosine
-from db.utils import get_repos_by_lang, init_session, get_functions_for_repo, update_function_metrics
-from scripts.utils import overall_mean, overall_median
+from db.utils import init_local_session, get_functions_for_repo
+from scripts.utils import overall_median
 from scripts.lang import LANGS
 from rich.console import Console
 
@@ -53,13 +54,24 @@ def all_pairs(strings):
     return list(combinations(strings, 2))
 
 
-def get_median_dist(repos, model):
+def get_median_dist(session, repos, model):
+    medians = []
+
     for repo in repos:
-        for function in get_functions_for_repo(repo.id):
+        for function in get_functions_for_repo(repo.id, session):
+            print(f"{function.name}")
+
             # if function.metrics and ATTR_KEY[0] in function.metrics and ATTR_KEY[1] in function.metrics[ATTR_KEY[0]]:
             #     continue
+            if function.median_id_semantic_similarity is not None:
+                medians.append(function.median_id_semantic_similarity)
+                continue
 
             names = function.names.split(" ")
+
+            if len(names) < 2:
+                continue
+
             all_names = all_pairs(random.sample(names, min(50, len(names))))
             prev_cosines = {}
             cosines = []
@@ -79,11 +91,19 @@ def get_median_dist(repos, model):
                 if cos != None:
                     prev_cosines[(name1, name2)] = cos
                     cosines.append(cos)
+                else:
+                    console.print(f"Cosine is None for {name1} and {name2}")
 
             median = overall_median(cosines)
             if median != None:
-                update_function_metrics(function, ATTR_KEY, median)
-                yield median
+                function.median_id_semantic_similarity = median
+                session.commit()
+                console.print(f"{function.name} = {median}")
+                medians.append(median)
+            else:
+                console.print(f"Median is None for {function.name}, num names: {len(names)}")
+    
+    return medians
 
 
 def plot_values(values, save_path, use_scatter=False, y_lim=None):
@@ -123,7 +143,7 @@ def plot_similarity(verbose: bool = False):
     global VERBOSE
     VERBOSE = verbose
 
-    init_session()
+    session = init_local_session()
     model = fasttext.load_model(MODEL)
     pvalues = []
 
@@ -140,11 +160,13 @@ def plot_similarity(verbose: bool = False):
     #     "python",
     # ]:
     for lang in LANGS:
-        repos = get_repos_by_lang(lang)
+        repos = Repo.all(session, lang=lang)
+        print(f"Number of repos: {len(repos)}")
 
-        series = get_median_dist(repos, model)
+        series = get_median_dist(session, repos, model)
         # distances = list(itertools.islice(series, 250000))
         distances = list(series)
+        console.print(f"Series length: {len(distances)}")
         # distances = [random.random() / 100 for _ in range(j)]
 
         all_distances.append(distances)
@@ -153,7 +175,7 @@ def plot_similarity(verbose: bool = False):
         print(f"Median for {lang}: {median}")
 
         # draw_one_dimensional_scatter(distances, lang)
-        plot_values(distances, save_path=f"build/stats/similarity_{lang}.png")
+        # plot_values(distances, save_path=f"build/stats/similarity_{lang}.png")
 
         # Histogram
         plt.hist(distances, bins="auto")

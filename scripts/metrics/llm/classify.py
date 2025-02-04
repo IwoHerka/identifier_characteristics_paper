@@ -6,9 +6,13 @@
 import os
 import csv
 import random
+import requests
 
 from openai import OpenAI
 from rich.console import Console
+
+from db.models import Repo
+from db.utils import init_local_session
 
 console = Console()
 
@@ -60,74 +64,30 @@ def get_written(csv_file_path):
     return first_column_values
 
 
-# TODO: Make into a command in main.py
-def classify(lang, outdir, limit):
-    client = OpenAI(api_key=os.getenv("OPENAI"))
+def classify():
+    session = init_local_session()
 
-    f = f"{outdir}/{lang}.csv"
-    written = get_written(f)
-    # console.print(written)
+    for repo in Repo.all(session):
+        if repo.about is not None:
+            continue
 
-    i = 0
+        console.print(f"Download 'about' for {repo.name}", style="red")
 
-    with open(f, "a", newline="", encoding="utf-8") as out_file:
-        writer = csv.writer(out_file)
-        a = list_readme_files(f"data/{lang}")
-        random.shuffle(a)
-        random.shuffle(a)
-        random.shuffle(a)
+        url = f"https://github.com/{repo.owner}/{repo.name}"
+        about_url = f"https://api.github.com/repos/{repo.owner}/{repo.name}"
 
-        for readme, dir_path in a:
-            project_name = dir_path.split("/")[-1]
-            readme_head = read_first_20_lines(readme)
+        headers = {
+            "Authorization": f"Bearer {os.getenv('GITHUB_TOKEN')}"
+        }
 
-            i += 1
-
-            if i == limit:
-                break
-
-            if project_name in written:
-                continue
-
-            console.print(f"#{i}", style="red")
-
-            prompt = f"""
-            Given a fragment of the README, determine whether project belongs to one of the following categories:
-
-            - lib/web - library related to networking, such as HTTP clients, HTTP servers, web scrappers or other utilities
-            - lib/cli - library related to command line, such as CLI utilities, pretty printing, tools for building CLI apps
-            - edu - educational, typically a collection of code examples, articles, something that is not an app, for human to read
-            - lib/db - library related to databases, such as database ORMs, utilities, integrations and so on
-            - lib/ml - project related to machine learning, AI, deep learning, and so on
-
-            If project doesn't fit into any of those, assign it to 'lib/other'. It is
-            likely that you will encounter projects which don't fit, so don't try
-            to fit them forcibly. When classifying, pick one most
-            dominant/core/crucial aspect of it. For example, is the project is a
-            web app for covnerting screenshots to code using AI, the category
-            should be lib/ml, not lib/web. If project is not runnable, but a
-            collection of resources, it's probably 'edu'. Then, give a short, one
-            sentence summary what the project is about. Provide answer in the
-            format:
-
-            <type>,'<summary>'
-
-            Here is the fragment of the README (it may contain some HTML, ignore it):
-
-            {readme_head}
-            """
-
-            chat_completion = client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="gpt-3.5-turbo"
-                # model="gpt-4",
-            )
-
-            response = chat_completion.choices[0].message.content
-
-            console.print(f"{project_name},{response}", style="yellow")
-            writer.writerow([project_name] + response.split(","))
-            out_file.flush()
+        response = requests.get(about_url, headers=headers)
+        if response.status_code == 200:
+            about_info = response.json()
+            about = about_info.get("description", "")
+            repo.about = (about or "-")[:250]
+            session.commit()
+        else:
+            console.print(f"Failed to download 'about' for {repo.name}", style="red")
 
 
 if __name__ == "__main__":

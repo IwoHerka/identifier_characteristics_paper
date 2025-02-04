@@ -13,13 +13,12 @@ def train(training_path, output_dir):
     """
     init_session()
 
-    with open(training_path, "w", encoding="utf-8") as file:
-        for lang, repos in get_lang_to_repo_ids_map().items():
-            for repo_id in repos:
-                names = get_training_text_for_repo(repo_id)
-                file.write(names)
-
-    console.print(f"Written training data to {training_path}")
+    # with open(training_path, "w", encoding="utf-8") as file:
+    #     for lang, repos in get_lang_to_repo_ids_map().items():
+    #         for repo_id in repos:
+    #             names = get_training_text_for_repo(repo_id)
+    #             file.write(names)
+    # console.print(f"Written training data to {training_path}")
 
     console.print(f"Training fasttext model with window size 5...")
     model = fasttext.train_unsupervised(

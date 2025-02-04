@@ -22,6 +22,8 @@ their domain. To test the framework, we performed a small pilot study, which
 included 1000 projects from the GitHub dataset, across 10 programming languages,
 3 programming paradigms, and 3 project domains.
 
+## Introduction
+
 In programming, identifier names play a crucial role in conveying the intended
 semantics of code. They serve as the primary means by which developers
 communicate the purpose and functionality of variables, functions, classes, and
@@ -54,12 +56,13 @@ semantics in source code repositories.
 
 ### Research questions
 
-- RQ1: Do common identifier characteristics reproduce across programming paradigms?
-- RQ2: Do common identifier characteristics reproduce across project domains?
-- RQ3: Do grammatical patterns found in procedural paradigms reproduce in functional paradigms?
-- RQ4: Can LLMs be used as ground truth for relatedness of identifiers?
-- RQ5: Can word embedding models be trained only on identifier names instead of AST?
-- RQ6: To what extent can large language models help domain categorization for software repositories?
+- RQ1: Do common identifier characteristics correlate with programming paradigms?
+- RQ2: Do common identifier characteristics correlate with project domains?
+- RQ3: Do common identifier characteristics correlate with programming languages?
+- RQ4: Do grammatical patterns found in procedural paradigms reproduce in functional paradigms?
+- RQ5: Can LLMs be used as ground truth for relatedness of identifiers?
+- RQ6: Can word embedding models be trained only on identifier names instead of AST?
+- RQ7: To what extent can large language models help domain categorization for software repositories?
 
 # Related work
 
@@ -67,6 +70,8 @@ semantics in source code repositories.
 - Review my review
 
 # Methodology
+
+## Data collection
 
 ### Repository download
 
@@ -95,7 +100,7 @@ functions. See figure [?].
 
 [Haskell functions figure]
 
-### Languages
+## Data processing
 
 ### Repository classification
 
@@ -126,6 +131,12 @@ prompt is as follows:
 
 ### Word embedding model training
 
+### Results
+
+- Discuss each metric with other metrics, lang, project
+- pvalues and ANOVA tests
+- Graphs and raw numeric results
+
 ### Discussion
 
 The results of our study reveal statistically significant differences in various
@@ -141,23 +152,20 @@ valuable insights for large-scale analyses and tool development, individual
 developers may not need to prioritize these differences in their routine coding
 practices.
 
-We hypothesize that the driving factor for differences in identifier metrics is
-a combination of all three: language, paradigm, and domain type. There is likely
-nothing inherent in any of these factors alone, but rather differences in
-developer cultures—language cultures, paradigm cultures, and domain
-cultures—that correlate with identifier metrics. These cultural differences can
-be shaped by correlations between typical applications of languages and
-paradigms (e.g., C is commonly used for OS programming, Erlang for
-telecommunications) and cultural factors such as project age, size, and whether
-it is open source.
+The correlations identified in this study are likely attributable to several key factors:
 
-To make the results more robust, a larger study involving more projects and
-project types for each included language should be conducted, controlling for
-additional variables such as project size and age. This would help in
-understanding the broader applicability and impact of identifier metrics across
-diverse software development contexts.
+- The size and age of the project
+- The number of developers involved
+- The problem domain
+- The syntax and semantics of the programming language
+- The culture of the developers
+- The programming paradigm
+- The architectural style (e.g., Domain-Driven Design, Hexagonal Architecture, etc.)
+- Whether the project is open source or proprietary
 
-- larger study
-- more langauges
-- more robust project classification
-- controlling for project size, age and number of developers
+These fundamental factors are likely to correlate themselves with language
+choice, paradigm, and domain type. Therefore, to gain a more comprehensive
+understanding of the determinants of identifier characteristics within a project
+(and how those factors are related to each other) a more extensive study
+encompassing a significantly larger number of projects is necessary, accounting
+for the aforementioned factors.
