@@ -109,11 +109,17 @@ def calculate_context_coverage():
     session = init_local_session()
     count = 0
 
-    for repo in Repo.all(session, selected=False):
+    for repo in Repo.all(session):
+        if repo.ntype is None or repo.ntype == "":
+            continue
+
         console.print(f"Calculating context coverage for {repo.name}", style="red")
         all_names = set()
         all_function_bodies = []
         functions = Function.filter_by(session, repo_id=repo.id)
+
+        if any(function.context_coverage is not None for function in functions):
+            continue
 
         console.print(f"Found {len(functions)} functions", style="red")
 

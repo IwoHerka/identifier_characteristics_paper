@@ -18,6 +18,7 @@ class Repo(Base):
     owner = Column(String)
     selected = Column(Boolean, default=False)
     type = Column(String, nullable=True, default=None)
+    ntype = Column(String, nullable=True, default=None)
     desc = Column(String, nullable=True, default=None)
     path = Column(String, nullable=True, default=None)
     readme = Column(String, nullable=True, default=None)
