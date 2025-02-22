@@ -67,7 +67,7 @@ def get_written(csv_file_path):
 def classify():
     session = init_local_session()
 
-    for repo in Repo.all(session):
+    for repo in Repo.all(session, lang='javascript'):
         if repo.about is not None:
             continue
 
@@ -75,10 +75,8 @@ def classify():
 
         url = f"https://github.com/{repo.owner}/{repo.name}"
         about_url = f"https://api.github.com/repos/{repo.owner}/{repo.name}"
-
-        headers = {
-            "Authorization": f"Bearer {os.getenv('GITHUB_TOKEN')}"
-        }
+        token = os.getenv("GITHUB_TOKEN", "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")
+        headers = {"Authorization": f"Bearer {token}"}
 
         response = requests.get(about_url, headers=headers)
         if response.status_code == 200:

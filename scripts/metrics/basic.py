@@ -118,18 +118,18 @@ def calculate_context_coverage():
         all_function_bodies = []
         functions = Function.filter_by(session, repo_id=repo.id)
 
-        if any(function.context_coverage is not None for function in functions):
-            continue
+        # if any(function.context_coverage is not None for function in functions):
+        #     continue
 
         console.print(f"Found {len(functions)} functions", style="red")
 
-        functions = [function for function in functions if 'test' not in function.name]
+        functions = [function for function in functions if (function.name and 'test' not in function.name)]
 
         for function in functions[:1000]:
             names = function.names.split(" ")
             all_function_bodies.append(names)
 
-        for function in functions[:100]:
+        for function in functions[:1000]:
             names = function.names.split(" ")[:10]
             all_names.update(names)
 
@@ -140,7 +140,7 @@ def calculate_context_coverage():
         
         values = get_context_coverage(all_function_bodies, all_names)
 
-        for function in functions[:100]:
+        for function in functions[:1000]:
             console.print(f"Calculating context coverage for {function.name}", style="yellow")
             names = function.names.split(" ")
             scores = []
@@ -204,10 +204,15 @@ def calculate_basic_metrics_for_repo(repo_id):
 
     for function in Function.filter_by(session, repo_id=repo_id):
         # try:
+        # TODO: Refactor
         if function.median_id_length is not None:
             continue
 
-        console.print(f"({count}) {function.name}", style="yellow")
+        try:
+            console.print(f"({count}) {function.name}", style="yellow")
+        except:
+            pass
+
         names = function.names.split(" ")
         metrics = get_basic_metrics(names, abbreviations)
         count += 1
@@ -224,7 +229,7 @@ def calculate_basic_metrics_for_repo(repo_id):
 
 def calculate_basic_metrics():
     session = init_local_session()
-    repo_ids = [repo.id for repo in Repo.all(session, selected=False)]
+    repo_ids = [repo.id for repo in Repo.all(session, lang='javascript')]
 
     for repo_id in repo_ids:
         calculate_basic_metrics_for_repo(repo_id)

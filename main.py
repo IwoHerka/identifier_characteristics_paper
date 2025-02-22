@@ -1,7 +1,6 @@
 import os
 from os import path
 
-# similarity():
 import fasttext
 import typer
 from rich.console import Console
@@ -21,6 +20,7 @@ from scripts.metrics.llm.rate import classify_all_repos
 from scripts.metrics.basic import calculate_basic_metrics, calculate_common_grammar, calculate_context_coverage
 from scripts.similarity.calculate_similarity_from_sampled import plot_similarity as _plot_similarity
 from scripts.plot.basic_metrics import BasicMetrics
+
 
 console = Console()
 app = typer.Typer()
@@ -48,7 +48,7 @@ GENSIM_MODEL_FILE = path.join(MODELS_DIR, "gensim.model")
 # TODO In analysis, give metric which is which lang has more < 0.2 similarity functions
 
 # Threats to validity:
-# - LLM rating is not a perfect measure of comprehensibility
+# - X LLM rating is not a perfect measure of comprehensibility
 # - Included functions are not discriminated (boilerplate functions are included)
 
 
@@ -237,6 +237,18 @@ def clone(force: bool = False, only_missing: bool = False):
     """
     init_session()
     clone_repos(DATA_DIR, force, only_missing)
+
+
+@app.command()
+def check_parametric():
+    from scripts.art import AlignedRankTransform
+    AlignedRankTransform().check_if_parametric()
+
+
+@app.command()
+def art():
+    from scripts.art import AlignedRankTransform
+    AlignedRankTransform().execute()
 
 
 if __name__ == "__main__":

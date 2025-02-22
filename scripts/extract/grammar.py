@@ -67,23 +67,25 @@ class Grammar:
         session = init_local_session()
         last_commit_time = time.time()
 
-        try:
-            for i, oname in enumerate(names):
-                if oname:
-                    name = re.sub(r'[^\w-]', '', oname)
-                    name = re.sub(r'\d+$', '', name)
-                    if name and len(name) > 1 and 'test' not in name:
-                        grammar = Grammar.__get_grammar(name, port)
-                        console.print(f"{oname} : {name} -> {grammar}")
-                        update_function_grammar(session, oname, grammar)
+        # try:
+        for i, oname in enumerate(names):
+            oname = oname[0]
 
-                if i % 50 == 0:
-                    session.commit()
-                    current_time = time.time()
-                    elapsed_time = current_time - last_commit_time
-                    console.print(f"Commit completed. Time elapsed since last commit: {elapsed_time:.2f} seconds")
-                    last_commit_time = current_time
-        except Exception as e:
-            console.print(e)
-        finally:
-            session.close()
+            if oname:
+                name = re.sub(r'[^\w-]', '', oname)
+                name = re.sub(r'\d+$', '', name)
+                if name and len(name) > 1 and 'test' not in name:
+                    grammar = Grammar.__get_grammar(name, port)
+                    console.print(f"{oname} : {name} -> {grammar}")
+                    update_function_grammar(session, oname, grammar)
+
+            if i % 50 == 0:
+                session.commit()
+                current_time = time.time()
+                elapsed_time = current_time - last_commit_time
+                console.print(f"Commit completed. Time elapsed since last commit: {elapsed_time:.2f} seconds")
+                last_commit_time = current_time
+        # except Exception as e:
+        #     console.print(e)
+        # finally:
+        #     session.close()

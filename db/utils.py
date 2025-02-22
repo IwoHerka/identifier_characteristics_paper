@@ -25,7 +25,7 @@ def init_session():
 
 
 def init_local_session():
-    Base.metadata.create_all(engine)
+    # Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     return Session()
 
@@ -187,9 +187,8 @@ def get_grammar_by_name(name):
 
 def get_distinct_function_names_without_grammar():
     names_by_lang = (
-        session.query(Function.name, Function.lang)
+        session.query(Function.name)
         .join(Repo, Repo.id == Function.repo_id)
-        .filter(Repo.selected == True)
         .filter((Function.grammar == None) | (Function.grammar == ""))
         .distinct()
         .all()

@@ -12,7 +12,7 @@ from db.engine import get_engine
 
 
 POOL_SIZE = 4
-MAX_FUNCTIONS = 5000
+MAX_FUNCTIONS = 10000
 
 console = Console()
 
@@ -42,10 +42,9 @@ def extract_repo(repo, lang):
             try:
                 fnames = extract(parser, file, globals()[f"extract_{lang}"])
 
-
                 for fname, names in fnames.items():
                     names = " ".join(names)
-                    if 'test' in fname:
+                    if fname != None and 'test' in fname:
                         continue
                     add_function(session, fname, names, repo_id, file, lang, file_order)
                     file_order += 1
@@ -58,6 +57,7 @@ def extract_repo(repo, lang):
             except Exception as e:
                 console.print("Failed to parse")
                 console.print(e)
+                raise e
                 continue
 
             if extracted_functions >= MAX_FUNCTIONS:

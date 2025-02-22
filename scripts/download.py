@@ -18,7 +18,7 @@ def get_top_repos_by_language(language, num, page):
     Download info on top 'num' GitHub repositories on specified page for
     specified language.
     """
-    token = os.getenv("GITHUB_TOKEN")
+    token = os.getenv("GITHUB_TOKEN", "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")
     
     # Define the URL and parameters for the request
     url = "https://api.github.com/search/repositories"
@@ -57,16 +57,18 @@ def clone_repos(dest_dir, force=False, only_missing=False, verbose=False):
 
     repos = repos.all()
 
-    token = os.getenv("GITHUB_TOKEN")
+    token = os.getenv("GITHUB_TOKEN", "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")
     headers = {
         "Authorization": f"Bearer {token}"
     }
-
 
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
     for repo in repos:
+        if repo.lang != 'javascript':
+            continue
+
         if repo.path and not force:
             continue
 

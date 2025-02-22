@@ -7,6 +7,18 @@ from db.engine import Base
 from collections import defaultdict
 
 
+class ARTRun(Base):
+    __tablename__ = "art_runs"
+
+    id = Column(Integer, primary_key=True)
+    langs = Column(String)
+    domains = Column(String)
+    metric = Column(String)
+    lang_fval = Column(Float)
+    domain_fval = Column(Float)
+    interact_fval = Column(Float)
+
+
 class Repo(Base):
     __tablename__ = "repos"
 
@@ -42,10 +54,9 @@ class Repo(Base):
         return (
             session.query(Repo)
             .filter(Repo.lang == lang)
-            .filter(Repo.selected == True)
             .outerjoin(Function, Repo.id == Function.repo_id)
             .group_by(Repo.id)
-            .having(func.count(Function.id).between(0, 100))
+            .having(func.count(Function.id).between(0, 10))
             .all()
         )
 
@@ -109,6 +120,7 @@ class Function(Base):
     file_name = Column(String)
     lang = Column(String)
     order = Column(Integer)
+    domain = Column(String)
 
     metrics = Column(String, nullable=True, default=None)
 
@@ -155,3 +167,21 @@ class Function(Base):
         query = query.limit(limit)
         query = query.with_entities(getattr(Function, metric))
         return query.all()
+
+
+    @staticmethod
+    def get_metrics_with_labels(session, langs, limit, metric, domains):
+        results = []
+
+        for lang in langs:
+            query = session.query(Function)
+            query = query.filter(getattr(Function, metric).isnot(None))
+            query = query.filter(Function.domain.in_(domains))
+            query = query.filter(Function.lang == lang)
+            query = query.limit(limit*4)
+            query = query.with_entities(getattr(Function, metric), Function.lang, Function.domain)
+            values = query.all()
+            random.shuffle(values)
+            results.extend(values[:limit])
+
+        return results

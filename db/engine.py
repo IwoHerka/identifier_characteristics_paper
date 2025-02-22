@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 USERNAME = "admin"
 PASSWORD = "password"
 HOST = "localhost"
-PORT = "5432"
+PORT = "5444"
 DATABASE = "namebench"
 
 
