@@ -250,6 +250,11 @@ def art():
     from scripts.art import AlignedRankTransform
     AlignedRankTransform().execute()
 
+@app.command()
+def gen_freq_dist():
+    from scripts.generate_frequency_distr import get_frequency_distribution
+    get_frequency_distribution()
+
 
 if __name__ == "__main__":
     app()

@@ -21,6 +21,7 @@ public class ExampleClass {
 
     // 4. Overloaded method (same name, different parameters)
     public double add(double x, double y) {
+        Runnable lambdaRunnable = () -> System.out.println("Lambda expression method");
         return x + y;
     }
 

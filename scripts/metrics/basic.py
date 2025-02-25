@@ -113,25 +113,32 @@ def calculate_context_coverage():
         if repo.ntype is None or repo.ntype == "":
             continue
 
+        if repo.lang in ["javascript", "haskell"]:
+            continue
+
+        if repo.ntype not in ['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
+            'build', 'code', 'log', 'seman', 'struct', 'ui']:
+            continue
+
         console.print(f"Calculating context coverage for {repo.name}", style="red")
         all_names = set()
         all_function_bodies = []
         functions = Function.filter_by(session, repo_id=repo.id)
 
-        # if any(function.context_coverage is not None for function in functions):
-        #     continue
-
-        console.print(f"Found {len(functions)} functions", style="red")
-
         functions = [function for function in functions if (function.name and 'test' not in function.name)]
 
-        for function in functions[:1000]:
+        count = sum(1 for function in functions if function.context_coverage is not None)
+        console.print(f"Found {len(functions)} functions and {count} functions with context coverage", style="red")
+
+        if count >= 1000 or count >= len(functions):
+            continue
+
+        functions = functions[:1000]
+
+        for function in functions:
             names = function.names.split(" ")
             all_function_bodies.append(names)
-
-        for function in functions[:1000]:
-            names = function.names.split(" ")[:10]
-            all_names.update(names)
+            all_names.update(names[:10])
 
         all_names = list(all_names)
 
@@ -140,9 +147,9 @@ def calculate_context_coverage():
         
         values = get_context_coverage(all_function_bodies, all_names)
 
-        for function in functions[:1000]:
+        for function in functions:
             console.print(f"Calculating context coverage for {function.name}", style="yellow")
-            names = function.names.split(" ")
+            names = function.names.split(" ")[:10]
             scores = []
 
             for name, value in values.items():

@@ -33,6 +33,8 @@ def get_context_coverage(texts, target_words):
 
     # Cache for pairwise similarities
     similarity_cache = {}
+    # Cache for doc -> index[lsi[corpus[doc]]] vectors
+    doc_sim_cache = {}
 
     # Store context coverage scores
     context_coverage_scores = {}
@@ -55,10 +57,18 @@ def get_context_coverage(texts, target_words):
         # Calculate pairwise similarities between relevant documents
         similarities_list = []
         for i, doc_idx_1 in enumerate(relevant_docs_indices[:10]):
+            # Retrieve or compute the similarity vector for doc_idx_1
+            if doc_idx_1 not in doc_sim_cache:
+                # Transform the corpus vector using lsi, then pass it to the index
+                doc_sim_cache[doc_idx_1] = index[lsi[corpus[doc_idx_1]]]
+
+            sim_vector_1 = doc_sim_cache[doc_idx_1]
+
             for doc_idx_2 in relevant_docs_indices[i + 1:]:
+                # Use pairwise cache to avoid double computation
                 pair = (doc_idx_1, doc_idx_2)
                 if pair not in similarity_cache:
-                    sim = index[lsi[corpus[doc_idx_1]]][doc_idx_2]
+                    sim = sim_vector_1[doc_idx_2]
                     similarity_cache[pair] = sim if sim > 0 else 0
                 similarities_list.append(similarity_cache[pair])
 

@@ -2,12 +2,13 @@ from scripts.parsing.parsers import *
 from tree_sitter import Language, Parser
 
 
-def test_clojure():
+def test_clojure(): # OK
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", "clojure"))
     names = extract(parser, "tests/samples/clojure.clj", extract_clojure)
 
     assert names["add#1"] == ["add", "a", "b", "+", "a", "b"]
+    print(names["add#2"])
     assert names["add#2"] == ["add", "fn", "a", "b", "+", "a", "b"]
     assert names["private-add#3"] == ["private-add", "a", "b", "+", "a", "b"]
     assert names["square#4"] == ["square", "x", "*", "x", "x"]
@@ -23,10 +24,13 @@ def test_clojure():
     ]
 
 
-def test_haskell():
+def test_haskell(): # NOT OK
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", "haskell"))
     names = extract(parser, "tests/samples/haskell.hs", extract_haskell)
+
+    print(names["factorial#1"])
+    assert False
 
     assert names["add#1"] == ["add", "y", "y"]
     assert names["add#2"] == ["add", "x", "y", "x", "y"]
@@ -49,7 +53,7 @@ def test_haskell():
     ]
 
 
-def test_elixir():
+def test_elixir(): # OK
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", "elixir"))
     names = extract(parser, "tests/samples/elixir.ex", extract_elixir)
@@ -62,7 +66,7 @@ def test_elixir():
     assert names["func#6"] == ["func", "a", "b", "a", "b"]
 
 
-def test_erlang():
+def test_erlang(): # OK
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", "erlang"))
     names = extract(parser, "tests/samples/erlang.erl", extract_erlang)
@@ -130,12 +134,10 @@ def test_erlang():
     ]
 
 
-def test_c():
+def test_c(): # OK
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", "c"))
     names = extract(parser, "tests/samples/c.c", extract_c)
-
-    print(names)
 
     assert names["add#1"] == ["add", "a", "b", "a", "b"]
     assert names["sayHello#2"] == ["sayHello", "printf"]
@@ -185,29 +187,31 @@ def test_c():
     assert names["main#12"] == ["main"]
 
 
-def test_javascript():
+def test_javascript(): # NOT OK
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", "javascript"))
     names = extract(parser, "tests/samples/javascript.js", extract_javascript)
 
-    assert names["greet#1"] == ["greet", "a", "a"]
-    assert names["greetAnon#2"] == ["greetAnon", "a", "a"]
-    assert names["greetNamed#3"] == ["greetNamed", "greetFunction", "a", "a"]
-    assert names["greetArrow#4"] == ["greetArrow", "a", "a"]
-    assert names["greetArrowOne#5"] == ["greetArrowOne", "name", "name"]
-    assert names["greetArrowMultiple#6"] == [
-        "greetArrowMultiple",
-        "greeting",
-        "name",
-        "greeting",
-        "name",
-    ]
-    assert names["greet#7"] == ["greet", "a", "a"]
-    assert names["generateSequence#8"] == ["generateSequence", "a", "a"]
-    assert names["fetchData#9"] == ["fetchData", "a", "data", "fetch", "a", "data"]
+    # assert names["greet#1"] == ["greet", "a", "a"]
+    # assert names["greetAnon#2"] == ["greetAnon", "a", "a"]
+    # assert names["greetNamed#3"] == ["greetNamed", "greetFunction", "a", "a"]
+    # assert names["greetArrow#4"] == ["greetArrow", "a", "a"]
+    # assert names["greetArrowOne#5"] == ["greetArrowOne", "name", "name"]
+    # assert names["greetArrowMultiple#6"] == [
+    #     "greetArrowMultiple",
+    #     "greeting",
+    #     "name",
+    #     "greeting",
+    #     "name",
+    # ]
+    # assert names["greet#7"] == ["greet", "a", "a"]
+    print(names["generateSequence#1"])
+    assert false
+    # assert names["generateSequence#8"] == ["generateSequence", "a", "a"]
+    # assert names["fetchData#9"] == ["fetchData", "a", "data", "fetch", "a", "data"]
 
 
-def test_python():
+def test_python(): # OK
     parser = Parser()
     parser.set_language(Language("build/parser_bindings.so", "python"))
     names = extract(parser, "tests/samples/python.py", extract_python)

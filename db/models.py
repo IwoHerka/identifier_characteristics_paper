@@ -16,6 +16,7 @@ class ARTRun(Base):
     metric = Column(String)
     lang_fval = Column(Float)
     domain_fval = Column(Float)
+    paradigm_fval = Column(Float)
     interact_fval = Column(Float)
 
 
@@ -137,12 +138,22 @@ class Function(Base):
     median_id_lv_dist             = Column(Float, nullable=True)
     num_consistency_violations    = Column(Float, nullable=True)
     num_conciseness_violations    = Column(Float, nullable=True)
+    median_word_concreteness      = Column(Float, nullable=True)
 
     term_entropy = Column(Float, nullable=True)
     context_coverage = Column(Float, nullable=True)
     # word_concreteness = Column(Float, nullable=True)
     # external_similarity = Column(Float, nullable=True)
     # grammatical_pattern = Column(String, nullable=True)
+
+    @staticmethod
+    def get_all_names(session):
+        return (
+            session.query(Function.names)
+                   .filter(Function.domain.isnot(None))
+                   .filter(Function.domain != '')
+                   .all()
+        )
 
     @staticmethod
     def get_grammars_for_lang(lang, session, limit=100000):

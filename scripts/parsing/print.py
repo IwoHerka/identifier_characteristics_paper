@@ -9,7 +9,6 @@ from collections import defaultdict
 
 from tree_sitter import Language, Parser
 
-from parsers import *
 
 
 def print_ast(node, depth=0):
@@ -38,7 +37,7 @@ if __name__ == "__main__":
     input_file = args.input
 
     if not os.path.exists(input_file):
-        raise FileNotFoundError(f"File not found: {file_path}")
+        raise FileNotFoundError(f"File not found: {input_file}")
 
     with open(input_file, "r") as file:
         content = file.read()

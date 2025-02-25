@@ -58,7 +58,7 @@ def extract_clojure(node, acc, ids, in_fun=False, name=None):
 
 def extract_haskell(node, acc, ids, in_fun=False, name=None):
     try:
-        is_defn = node.type == "function"
+        is_defn = node.type == "function" and not in_fun
 
         if is_defn:
             name = f'{str(node.children[0].text, encoding="utf-8")}#{next(ids)}'
@@ -133,7 +133,7 @@ def extract_javascript(node, acc, ids, in_fun=False, name=None):
             "arrow_function",
             "method_definition",
             "generator_function_declaration",
-        ]
+        ] and not in_fun
 
         if is_defn:
             if (
