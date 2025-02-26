@@ -147,7 +147,7 @@ class AlignedRankTransform:
     for domains in domains_subset:
       metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
       # result = AlignedRankTransform._execute(metric_values)
-      result_srh = AlignedRankTransform._execute_srh(metric_values)
+      result_srh = AlignedRankTransform._execute(metric_values)
 
       # print(result)
 
@@ -188,9 +188,8 @@ class AlignedRankTransform:
         """
         model = smf.ols(formula, data=data).fit()
         anova_table = sm.stats.anova_lm(model, typ=2)
-        # print(anova_table)
+        print(anova_table)
         f_val = anova_table['F'][0]
-        print(f_val)
         return f_val
 
     # ------------------------

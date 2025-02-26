@@ -16,46 +16,19 @@ DOING
 - Generate diagrams for all metrics and describe most interesting
 - Perform randomized ART, INT and SRH
 - Perform word embedding model benchmark
-- Describe methodology
-- Describe results and conclusions
-
 
 WAITING
 - Finish context coverage
 - Finish grammar
 - Finish word concreteness
-- External similarity
-
+- External internal & external similarity
+- Redo Haskell
 
 - Normalize term entropy ?
 - Semantic sim should be 1 - X
 
 
-We will write a methodology section for a research paper with following abstract:
-
-Identifier names convey important semantic cues in source code, and name-based
-analyses exploit these cues to detect bugs, predict types, and improve code
-readability. Despite the introduction of many lexicon metrics, large-scale,
-holistic examinations of code identifiers remain limited. In this work, we
-investigate which factor—programming language or project domain—exerts the
-greatest influence on identifier characteristics. To address this question, we
-implemented automated analysis tool and systematically examined an extensive set
-of identifier metrics, including basic properties (length, frequency of
-duplicates, casing styles, etc.) and more complex measures (Levenshtein
-distance, term entropy, semantic similarity, word concreteness). Empirical study
-encompasses 10000 open source projects spanning ten programming languages, three
-paradigms (functional, imperative and object-oriented), and multiple project
-domains. This multi-faceted approach offers insights into the relative impact of
-language, paradigm, and domain on naming practices in open-source code.
-
-We will do this in steps. First, write a short introduction to Methodology
-section explainin that in this section outlines the steps taken to collect,
-process, and analyze the data and design of the study.
-
-I will now give you collection of facts about first two steps of data
-preparation. Don't rewrite this text, start from scratch, but include all of
-those facts:
-
+FACTS
 1. Download repository information and source code from GitHub.
 
 For our study we included the top 1000 most popular (as expressed in number of
@@ -88,10 +61,7 @@ language keywords, function calls to standard library, preprocessor macros, and
 so on. Nested functions are not included in their parents to ensure observations
 are not repeated within samples. Here are some examples: <examples>
 
-
-I will now give you next section:
-
-Generate training file to word embedding model and train it
+3. Generate training file to word embedding model and train it
 
 Word embedding model used to calculate semantic similarity was fastText’s CBOW.
 ('continuous-bag-of-words').  cbow model predicts the target word according to
@@ -109,12 +79,14 @@ rate 0.1, number of epochs 5 and in two wariants: One with window size 5 for
 general use and window size 2 to be used as part of word concreteness metric
 calculation (explained below).
 
+4. Repository project domain classification.
 
-'frontend', 'backend', 'infr', 'edu', 
-'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp', 'build', 'code', 'log', 'seman', 'struct', 'ui'
+Table 1 describe each project domain and major software types in each domain.
+Repositories were classified manually by one of the authors in three steps:
 
-Initial high-level set of domains consisted of:
+1. First pass - pick general category.
 
+Initially we had less and more general categories:
 Web and networking
 Low-level programming
 Databases
@@ -123,7 +95,28 @@ Machine learning/AI
 Educational
 Other
 
-Project domains included in the study are as follows:
+But after first pass it turned out that projects are too diverse to be classified
+into such general categories. There we extended the list to 12 categories present
+in Table 1.
+
+2. Second pass - projects from initial list were classified into more specific
+categories.
+
+3. Review pass - all projects were reviewed and corrected where mistakes where detected.
+
+We made the decision to not include projects in categories "Other libraries",
+"Other" and "Applications" due to their broadness and heterogeneity.
+"Other libraries" category mostly consists of software libraries which don't fit
+into categories which are not large enough between all included languages, 
+are language-specific, like distributed process management libraries 
+for Elixir and Erlang, or they overlap multiple categories and it's unclear
+what the best category would be.
+
+"Applications" category mostly consists of complete applications, platforms, systems
+or products and therefore we don't expect them to make up a lexically coherent group (each
+would have it's own specific domain terms).
+
+5. Function name grammar extraction
 
 Frontend - 
   High-level web development and frameworks, HTML, CSS, static site generators, 
@@ -186,7 +179,3 @@ User interface
 Applications
 Other libraries
 Other
-
-1. First pass - general category
-2. Second pass - more specific subcategories
-3. Review pass -
