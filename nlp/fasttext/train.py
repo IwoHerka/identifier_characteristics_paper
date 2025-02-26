@@ -12,4 +12,4 @@ if __name__ == "__main__":
         args.i, "cbow", minCount=3, lr=0.1, ws=5, epoch=5, dim=100, thread=24
     )
 
-    model.save_model(args.o)
+    # model.save_model(args.o)

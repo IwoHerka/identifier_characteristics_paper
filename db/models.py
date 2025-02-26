@@ -139,6 +139,7 @@ class Function(Base):
     num_consistency_violations    = Column(Float, nullable=True)
     num_conciseness_violations    = Column(Float, nullable=True)
     median_word_concreteness      = Column(Float, nullable=True)
+    median_external_similarity    = Column(Float, nullable=True)
 
     term_entropy = Column(Float, nullable=True)
     context_coverage = Column(Float, nullable=True)

@@ -5,6 +5,7 @@ import string
 import casestyle
 import fasttext
 
+from multiprocessing import Process
 from itertools import combinations
 from nltk.stem import PorterStemmer, LancasterStemmer, SnowballStemmer
 from nltk.corpus import gutenberg
@@ -13,6 +14,20 @@ from rich.console import Console
 from scipy.spatial.distance import cosine
 from db.models import Function, Repo
 from db.utils import init_local_session
+
+NUM_PROCESSES = 4
+LANGS = [
+    "c",
+    "clojure",
+    "elixir",
+    "erlang",
+    "fortran",
+    # "haskell",
+    "java",
+    # "javascript",
+    "ocaml",
+    "python",
+]
 
 
 console = Console()
@@ -160,11 +175,10 @@ def get_multigram_concreteness(word):
   return multigram_conc
 
 
-if __name__ == "__main__":
-  initialize()
+def process(lang):
   session = init_local_session()
 
-  for repo in Repo.all(session):
+  for repo in Repo.all(session, lang=lang):
     if repo.ntype is None or repo.ntype == "":
         continue
 
@@ -172,8 +186,8 @@ if __name__ == "__main__":
             'build', 'code', 'log', 'seman', 'struct', 'ui']:
       continue
 
-    if repo.lang in ["javascript", "haskell"]:
-      continue
+    # if repo.lang in ["javascript", "haskell"]:
+    #   continue
 
     functions = Function.filter_by(session, repo_id=repo.id)
 
@@ -195,3 +209,16 @@ if __name__ == "__main__":
       session.commit()
 
   session.close()
+
+
+if __name__ == "__main__":
+  initialize()
+  processes = []
+
+  for lang in LANGS:
+      p = Process(target=process, args=(lang,))
+      p.start()
+      processes.append(p)
+
+  for p in processes:
+      p.join()
