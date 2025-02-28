@@ -22,7 +22,7 @@ LANGS = [
     "elixir",
     "erlang",
     "fortran",
-    # "haskell",
+    "haskell",
     "java",
     # "javascript",
     "ocaml",

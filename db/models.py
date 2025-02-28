@@ -122,6 +122,7 @@ class Function(Base):
     lang = Column(String)
     order = Column(Integer)
     domain = Column(String)
+    selected = Column(Boolean, default=False)
 
     metrics = Column(String, nullable=True, default=None)
 

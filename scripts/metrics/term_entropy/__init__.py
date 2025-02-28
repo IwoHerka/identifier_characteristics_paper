@@ -136,5 +136,10 @@ def calculate_term_entropy(normalize=False):
             # update_function_metrics(function, "median_term_entropy", median(entropies))
             if len(entropies) > 0:
                 function.term_entropy = median(entropies)
-                session.commit()
-                console.print(f"Median term entropy for {function.name}: {median(entropies)}")
+                session.add(function)
+                try:
+                    console.print(f"Median term entropy for {function.name}: {median(entropies)}")
+                except:
+                    pass
+                
+        session.commit()

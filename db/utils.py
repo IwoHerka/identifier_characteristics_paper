@@ -191,7 +191,7 @@ def get_distinct_function_names_without_grammar():
         .filter(Function.domain.in_(['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
             'build', 'code', 'log', 'seman', 'struct', 'ui']))
         .filter((Function.grammar == None) | (Function.grammar == ""))
-        .filter(~Function.lang.in_(["javascript", "haskell"]))
+        .filter(~Function.lang.in_(["javascript", "haskell_"]))
         .distinct()
         .all()
     )

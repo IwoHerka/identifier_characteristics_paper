@@ -109,16 +109,16 @@ def calculate_context_coverage():
     session = init_local_session()
     count = 0
 
-    for repo in Repo.all(session):
-        if repo.ntype is None or repo.ntype == "":
-            continue
+    for repo in Repo.all(session, selected=True):
+        # if repo.ntype is None or repo.ntype == "":
+        #     continue
 
-        if repo.lang in ["javascript", "haskell"]:
-            continue
+        # # if repo.lang in ["javascript", "haskell"]:
+        # #     continue
 
-        if repo.ntype not in ['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
-            'build', 'code', 'log', 'seman', 'struct', 'ui']:
-            continue
+        # if repo.ntype not in ['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
+        #     'build', 'code', 'log', 'seman', 'struct', 'ui']:
+        #     continue
 
         console.print(f"Calculating context coverage for {repo.name}", style="red")
         all_names = set()
@@ -130,15 +130,15 @@ def calculate_context_coverage():
         count = sum(1 for function in functions if function.context_coverage is not None)
         console.print(f"Found {len(functions)} functions and {count} functions with context coverage", style="red")
 
-        if count >= 1000 or count >= len(functions):
+        if count >= 2000 or count >= len(functions):
             continue
 
-        functions = functions[:1000]
+        functions = functions[:2000]
 
         for function in functions:
             names = function.names.split(" ")
             all_function_bodies.append(names)
-            all_names.update(names[:10])
+            all_names.update(names[:20])
 
         all_names = list(all_names)
 
@@ -149,7 +149,7 @@ def calculate_context_coverage():
 
         for function in functions:
             console.print(f"Calculating context coverage for {function.name}", style="yellow")
-            names = function.names.split(" ")[:10]
+            names = function.names.split(" ")[:20]
             scores = []
 
             for name, value in values.items():
@@ -236,10 +236,12 @@ def calculate_basic_metrics_for_repo(repo_id):
 
 def calculate_basic_metrics():
     session = init_local_session()
-    repo_ids = [repo.id for repo in Repo.all(session, lang='javascript')]
+    for repo in Repo.all(session, lang='haskell'):
+        if repo.ntype not in ['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
+            'build', 'code', 'log', 'seman', 'struct', 'ui']:
+            continue
 
-    for repo_id in repo_ids:
-        calculate_basic_metrics_for_repo(repo_id)
+        calculate_basic_metrics_for_repo(repo.id)
 
     # with Pool(POOL_SIZE) as p:
     #     # Use the pool to map the function to the repo_ids with a specified chunk size
