@@ -174,9 +174,8 @@ class AlignedRankTransform:
 
     for domains in domains_subset:
       metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
-
-      result = AlignedRankTransform._identify_language_differences(metric_values)
-      AlignedRankTransform._interpret_language_differences(result)
+      result = AlignedRankTransform.identify_interaction_deviations(metric_values)
+      AlignedRankTransform.interpret_interaction_deviations(result)
 
     return
 
@@ -290,15 +289,15 @@ class AlignedRankTransform:
     return results    
 
   @staticmethod
-  def _identify_language_differences(metric_values, alpha=0.05):
+  def _identify_deviant_languages(metric_values, alpha=0.05):
     """
-    Identifies language pairs with largest metric differences using:
-    - Mann-Whitney U tests (non-parametric)
+    Identifies languages deviating most from the overall average using:
+    - Rank transformation for non-parametric analysis
+    - Mann-Whitney U tests vs combined other languages
     - Cliff's delta effect sizes
     - Holm-Bonferroni correction
-    - Rank-transformed data (for consistency with ANOVA)
     
-    Returns sorted list of pairs by effect size magnitude.
+    Returns sorted list of languages by deviation magnitude.
     """
     # Create DataFrame with ranked data
     df = pd.DataFrame({
@@ -306,32 +305,43 @@ class AlignedRankTransform:
         'Metric': [mv[0] for mv in metric_values]
     })
     
-    # Rank across entire dataset (aligns with ANOVA procedure)
+    # Rank across entire dataset (aligns with previous analyses)
     df['Ranked'] = rankdata(df['Metric'])
     
-    # Get unique languages and their ranked metrics
+    # Get unique languages
     languages = df['Language'].unique()
-    language_pairs = list(itertools.combinations(languages, 2))
     
     results = []
-    for lang1, lang2 in language_pairs:
-        # Get ranks for both languages (all domains combined)
-        ranks1 = df[df['Language'] == lang1]['Ranked']
-        ranks2 = df[df['Language'] == lang2]['Ranked']
+    for lang in languages:
+        # Split into target vs all others
+        mask = df['Language'] == lang
+        target_ranks = df[mask]['Ranked']
+        other_ranks = df[~mask]['Ranked']
         
+        # Skip small samples (<10 observations)
+        if len(target_ranks) < 10:
+            continue
+            
         # Mann-Whitney U test
-        u_stat, p_val = mannwhitneyu(ranks1, ranks2, alternative='two-sided')
+        u_stat, p_val = mannwhitneyu(target_ranks, other_ranks, 
+                                   alternative='two-sided')
         
         # Cliff's delta calculation
-        n1, n2 = len(ranks1), len(ranks2)
-        cliff_delta = (2 * u_stat / (n1 * n2)) - 1  # Range: [-1, 1]
+        n1, n2 = len(target_ranks), len(other_ranks)
+        cliff_delta = (2 * u_stat / (n1 * n2)) - 1  # [-1, 1]
+        
+        # Relative median difference (for practical interpretation)
+        target_median = np.median(df[mask]['Metric'])
+        overall_median = np.median(df['Metric'])
+        median_diff = target_median - overall_median
         
         results.append({
-            'comparison': f"{lang1} vs {lang2}",
+            'language': lang,
             'p_value': p_val,
             'cliffs_delta': cliff_delta,
-            'n1': n1,
-            'n2': n2
+            'median_diff': median_diff,
+            'n_obs': len(target_ranks),
+            'overall_median': overall_median
         })
     
     # Multiple comparisons adjustment
@@ -343,103 +353,138 @@ class AlignedRankTransform:
         res['adj_p_value'] = adj_p_values[i]
         res['significant'] = adj_p_values[i] < alpha
     
-    # Sort by effect size magnitude (absolute value)
+    # Sort by absolute effect size (most deviant first)
     results.sort(key=lambda x: abs(x['cliffs_delta']), reverse=True)
     
     return results
 
   @staticmethod
-  def _interpret_language_differences(results, alpha=0.05, top_n=10):
-    """Prints formatted interpretation of language comparisons"""
-    print(f"\n{'Language Pair':<25} {'Cliffs δ':<10} {'p-value':<12} {'Sig.':<6}")
-    print("-"*55)
+  def _interpret_deviant_languages(results, alpha=0.05, top_n=10):
+    """Prints formatted interpretation of language deviations"""
+    print(f"\n{'Language':<15} {'δ vs Others':<12} {'Med Diff':<12} {'p-value':<12} {'Sig.':<6}")
+    print("-"*60)
     for res in results[:top_n]:
         sig = "***" if res['adj_p_value'] < 0.001 else \
-              "**" if res['adj_p_value'] < 0.01 else \
+              "**" if res['adj_p_value'] < 0.001 else \
               "*" if res['significant'] else ""
-        print(f"{res['comparison']:<25} {res['cliffs_delta']:+.2f}{sig:<5} {res['adj_p_value']:.4f}")
+        print(f"{res['language']:<15} {res['cliffs_delta']:+.2f}{sig:<5} "
+              f"{res['median_diff']:+.2f}{'*' if res['significant'] else '':<5} "
+              f"{res['adj_p_value']:.4f}")
 
     # Print key findings
     sig_results = [res for res in results if res['significant']]
     print(f"\nKey Findings (α={alpha}):")
-    print(f"- Total comparisons: {len(results)}")
-    print(f"- Significant pairs: {len(sig_results)}")
+    print(f"- Total languages: {len(results)}")
+    print(f"- Significant deviations: {len(sig_results)}")
     
     if sig_results:
-        print("\nLargest Differences:")
+        print("\nMost Distinctive Languages:")
         for res in sig_results[:5]:
-            direction = "higher" if res['cliffs_delta'] > 0 else "lower"
-            print(f"- {res['comparison']}: {direction} ranks (δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
+            direction = "above" if res['median_diff'] > 0 else "below"
+            print(f"- {res['language']}: {direction} average by {abs(res['median_diff']):.2f} "
+                  f"(δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
 
   @staticmethod
-  def _nonparametric_simple_effects_test(metric_values, alpha=0.05):
+  def identify_interaction_deviations(metric_values, alpha=0.05, min_sample=10):
     """
-    Non-parametric pairwise tests for unbalanced, non-normal data.
-    Uses rank-transformed metric and Holm-Bonferroni correction.
+    Identifies exceptional (language, domain) combinations using:
+    - Rank transformation for non-parametric analysis
+    - Comparison against all other combinations
+    - Cliff's delta effect sizes
+    - Holm-Bonferroni correction
+    - Practical median differences
+    
+    Returns sorted list of (lang, domain) pairs by interaction strength.
     """
-    # Prepare DataFrame with original labels and ranks
+    # Create DataFrame with ranked data
     df = pd.DataFrame({
         'Language': [mv[1] for mv in metric_values],
         'Domain': [mv[2] for mv in metric_values],
         'Metric': [mv[0] for mv in metric_values]
     })
-    df['Ranked'] = rankdata(df['Metric'])  # Use same rank transform as ANOVA
     
-    # Generate all (lang, domain) pairs
-    pairs = list(df.groupby(['Language', 'Domain']).groups.keys())
+    # Rank across entire dataset (aligns with ANOVA)
+    df['Ranked'] = rankdata(df['Metric'])
+    
+    # Get unique (lang, domain) combinations
+    groups = df.groupby(['Language', 'Domain'])
+    combinations = list(groups.groups.keys())
     
     results = []
-    for pair in itertools.combinations(pairs, 2):
-        (lang1, domain1), (lang2, domain2) = pair
-        # Extract ranked data for groups
-        group1 = df[(df['Language'] == lang1) & (df['Domain'] == domain1)]['Ranked']
-        group2 = df[(df['Language'] == lang2) & (df['Domain'] == domain2)]['Ranked']
+    for (lang, domain) in combinations:
+        # Get target group and all others
+        target_mask = (df['Language'] == lang) & (df['Domain'] == domain)
+        target_group = df[target_mask]
+        other_groups = df[~target_mask]
         
-        # Mann-Whitney U test (non-parametric, handles unbalanced groups)
-        u_stat, p_val = mannwhitneyu(group1, group2, alternative='two-sided')
+        # Skip small samples
+        if len(target_group) < min_sample:
+            continue
+            
+        # Non-parametric comparison
+        u_stat, p_val = mannwhitneyu(target_group['Ranked'], 
+                                   other_groups['Ranked'],
+                                   alternative='two-sided')
         
-        # Cliff's delta (non-parametric effect size)
-        n1, n2 = len(group1), len(group2)
-        cliff_delta = (2 * u_stat / (n1 * n2)) - 1  # Ranges [-1, 1]
+        # Effect size calculations
+        n1, n2 = len(target_group), len(other_groups)
+        cliff_delta = (2 * u_stat / (n1 * n2)) - 1  # [-1, 1]
+        
+        # Practical difference metrics
+        target_median = np.median(target_group['Metric'])
+        overall_median = np.median(df['Metric'])
+        median_diff = target_median - overall_median
         
         results.append({
-            'comparison': f"{lang1} ({domain1}) vs {lang2} ({domain2})",
+            'combination': f"{lang} × {domain}",
+            'language': lang,
+            'domain': domain,
             'p_value': p_val,
             'cliffs_delta': cliff_delta,
-            'n1': n1,
-            'n2': n2
+            'median_diff': median_diff,
+            'n_obs': len(target_group),
+            'overall_median': overall_median
         })
     
-    # Apply Holm-Bonferroni correction (less conservative)
+    # Multiple comparisons adjustment
     p_values = [res['p_value'] for res in results]
     reject, adj_p_values, _, _ = multipletests(p_values, alpha=alpha, method='holm')
     
-    # Update results
+    # Add adjusted p-values and significance
     for i, res in enumerate(results):
         res['adj_p_value'] = adj_p_values[i]
         res['significant'] = adj_p_values[i] < alpha
     
-    # Sort by effect size magnitude
-    results.sort(key=lambda x: abs(x['cliffs_delta']), reverse=True)
+    # Sort by absolute effect size and significance
+    results.sort(key=lambda x: (abs(x['cliffs_delta']), -x['adj_p_value']), reverse=True)
     
     return results
 
   @staticmethod
-  def _interpret_simple_effects(results, alpha=0.05):
-    """Prints formatted interpretation of simple effects results"""
-    print(f"\n{'Comparison':<40} {'Cliffs δ':<10} {'Adj p-value':<12} {'Significant':<10}")
-    print("-"*75)
-    for res in results:
-        sig = "***" if res['adj_p_value'] < 0.001 else "**" if res['adj_p_value'] < 0.01 else "*" if res['significant'] else ""
-        print(f"{res['comparison']:<40} {res['cliffs_delta']:+.2f}{sig:<10} {res['adj_p_value']:.4f}       {str(res['significant'])}")
+  def interpret_interaction_deviations(results, alpha=0.05, top_n=10):
+    """Prints formatted interpretation of interaction effects"""
+    print(f"\n{'Combination':<25} {'δ vs Others':<12} {'Med Diff':<12} {'p-value':<12} {'Sig.':<6}")
+    print("-"*65)
+    for res in results[:top_n]:
+      sig = "***" if res['adj_p_value'] < 0.001 else \
+            "**" if res['adj_p_value'] < 0.01 else \
+            "*" if res['significant'] else ""
+      print(f"{res['combination']:<25} {res['cliffs_delta']:+.2f}{sig:<5} "
+            f"{res['median_diff']:+.2f}{'*' if res['significant'] else '':<5} "
+            f"{res['adj_p_value']:.4f}")
 
     # Print key findings
     sig_results = [res for res in results if res['significant']]
-    print(f"\nFound {len(sig_results)} significant pairs (α={alpha}):")
-    for res in sig_results[:5]:  # Show top 5
-        direction = "higher" if res['cliffs_delta'] > 0 else "lower"
-        print(f"- {res['comparison']}: {direction} ranks (δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
-
+    print(f"\nKey Interaction Findings (α={alpha}):")
+    print(f"- Total combinations tested: {len(results)}")
+    print(f"- Significant deviations: {len(sig_results)}")
+    
+    if sig_results:
+        print("\nMost Exceptional Interactions:")
+        for res in sig_results[:5]:
+            direction = "above" if res['median_diff'] > 0 else "below"
+            print(f"- {res['combination']}: {direction} average by {abs(res['median_diff']):.2f} "
+                  f"(δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
 
   # @staticmethod
   # def _execute_anova(metric_values, typ):

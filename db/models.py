@@ -28,6 +28,14 @@ class ARTRun(Base):
     interact_p = Column(Float)
     interact_df = Column(Float)
 
+    @staticmethod
+    def all(session, **kwargs):
+        query = session.query(ARTRun)
+        for key, value in kwargs.items():
+            if hasattr(ARTRun, key):
+                query = query.filter(getattr(ARTRun, key) == value)
+        return query.all()
+
 
 class ANOVARun(Base):
     __tablename__ = "anova_runs"

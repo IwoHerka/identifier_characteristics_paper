@@ -1,4 +1,4 @@
-id1,id2,similarity,relatedness,contextual_similarity,FT-cbow,FT-SG,w2v-SG,w2v-cbow,Path-based,LV,NW,Cosine_Similarity
+id1,id2,similarity,relatedness,contextual_similarity,FT-cbow,FT-SG,w2v-SG,w2v-cbow,Path-based,LV,NW,Custom
 i,targ,0.3125,0.1718,0.0346,0.22,0.68,0.19,0.28,0.45,0.0,0.12,-0.003754345467314124
 expr,hint,0.1457,0.2155,NAN,0.11,0.42,0.21,0.25,0.36,0.0,0.5,-0.07592793554067612
 canvas,video,0.4167,0.7168,0.8173,0.48,0.57,0.49,0.24,0.78,0.0,0.42,0.1685405671596527

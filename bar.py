@@ -17,7 +17,7 @@ from nltk.corpus import gutenberg
 from collections import Counter, defaultdict
 from rich.console import Console
 from scipy.spatial.distance import cosine
-from db.models import Function, Repo, ANOVARun
+from db.models import Function, Repo, ANOVARun, ARTRun
 import casestyle
 from db.utils import init_local_session
 from itertools import combinations
@@ -127,6 +127,7 @@ def plot_dot_diagram(df):
     # Show the plot
     plt.savefig('anova_effect_sizes.png', dpi=500, bbox_inches='tight')  # Ensure the legend is not cut off
 
+
 def validate_anova_runs():
     session = init_local_session()
 
@@ -147,29 +148,40 @@ def validate_anova_runs():
       # grammar
     ]
 
-    lang_es = []
-    domain_es = []
-    interact_es = []
-    max_samples = []
-    metrics = []
-
     for metric in METRICS:
+        lang_es = []
+        domain_es = []
+        interact_es = []
+        max_samples = []
+        metrics = []
+
         for per_lang_limit in reversed([6300, 8400, 10600]):
-            for run in ANOVARun.all(session, max_samples=per_lang_limit, metric=metric, typ=4):
+            for run in ANOVARun.all(session, max_samples=per_lang_limit, metric=metric, typ=4, domains="ml infr db struct edu lang frontend backend build code cli comp game"):
                 lang_es.append(run.lang_es)
                 domain_es.append(run.domain_es)
                 interact_es.append(run.interact_es)
                 max_samples.append(run.max_samples)
                 metrics.append(metric)
 
-        median_lang_es = f"{statistics.median(lang_es):.4f}"
-        median_domain_es = f"{statistics.median(domain_es):.4f}"
-        median_interact_es = f"{statistics.median(interact_es):.4f}"
-        mean_lang_es = f"{statistics.mean(lang_es):.4f}"
-        mean_domain_es = f"{statistics.mean(domain_es):.4f}"
-        mean_interact_es = f"{statistics.mean(interact_es):.4f}"
+        median_lang_es = statistics.median(lang_es)
+        median_domain_es = statistics.median(domain_es)
+        median_interact_es = statistics.median(interact_es)
+        mean_lang_es = statistics.mean(lang_es)
+        mean_domain_es = statistics.mean(domain_es)
+        mean_interact_es = statistics.mean(interact_es)
+        std_lang_es = statistics.stdev(lang_es)
+        std_domain_es = statistics.stdev(domain_es)
+        std_interact_es = statistics.stdev(interact_es)
 
-        console.print(f"{metric.replace('_', ' ')} & {median_lang_es}, {mean_lang_es} & {median_domain_es}, {mean_domain_es} & {median_interact_es}, {mean_interact_es} \\\\")
+        # if (abs(median_lang_es - median_interact_es) <= 0.005 and median_lang_es > median_interact_es) or (abs(mean_lang_es - mean_interact_es) <= 0.005 and mean_lang_es > mean_interact_es):
+        #     console.print(f"X")
+
+        # if median_interact_es > median_lang_es or mean_interact_es > mean_lang_es:
+        #     console.print(f"O")
+
+        console.print(f"{metric.replace('_', ' ')} & {median_lang_es:.4f}, {mean_lang_es:.4f}, {std_lang_es:.4f} & {median_domain_es:.4f}, {mean_domain_es:.4f}, {std_domain_es:.4f} & {median_interact_es:.4f}, {mean_interact_es:.4f}, {std_interact_es:.4f} \\\\")
+
+    return
 
     df = pd.DataFrame({
         'language_effect_size': lang_es,
@@ -204,10 +216,62 @@ def validate_anova_runs():
         else:
             raise Exception(f"Unexpected number of keys: {len(metric_to_order)}")
 
+def validate_art_runs():
+    session = init_local_session()
+
+    METRICS = [
+      "median_id_length", 
+      "median_id_soft_word_count",
+      "id_duplicate_percentage",
+      "num_single_letter_ids",
+      "id_percent_abbreviations",
+      "id_percent_dictionary_words",
+      "num_conciseness_violations",
+      "num_consistency_violations",
+      "term_entropy",
+      "median_id_lv_dist",
+      "median_id_semantic_similarity",
+      "median_word_concreteness",
+      "context_coverage",
+      # grammar
+    ]
+    for metric in METRICS:
+        lang_p = []
+        domain_p = []
+        interact_p = []
+        max_samples = []
+
+        for run in ARTRun.all(session, metric=metric):
+            lang_p.append(run.lang_p)
+            domain_p.append(run.domain_p)
+            interact_p.append(run.interact_p)
+            max_samples.append(run.max_samples)
+
+        median_lang_p = statistics.median(lang_p)
+        median_domain_p = statistics.median(domain_p)
+        median_interact_p = statistics.median(interact_p)
+        mean_lang_p = statistics.mean(lang_p)
+        mean_domain_p = statistics.mean(domain_p)
+        mean_interact_p = statistics.mean(interact_p)
+        max_lang_p = max(lang_p)
+        max_domain_p = max(domain_p)
+        max_interact_p = max(interact_p)
+
+        def fn_print(v):
+            if f"{v:.4f}" == "0.0000":
+                return "0"
+            elif v >= 0.05:
+                return f"\\underline{{{v:.4f}}}"
+            else:
+                return f"{v:.4f}"
+
+        # console.print(f"{metric.replace('_', ' ')} & {fn_print(median_lang_p)}, {fn_print(mean_lang_p)}, {fn_print(max_lang_p)} & {fn_print(median_domain_p)}, {fn_print(mean_domain_p)}, {fn_print(max_domain_p)} & {fn_print(median_interact_p)}, {fn_print(mean_interact_p)}, {fn_print(max_interact_p)} \\\\")
+
 
 if __name__ == "__main__":
     # calculate_number_of_function_domain()
     validate_anova_runs()
+    # validate_art_runs()
 
     # session = init_local_session()
     # # model = fasttext.load_model("build/models/ft_19M_100x1000_5ws.bin")
