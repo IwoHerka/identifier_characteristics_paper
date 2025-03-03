@@ -43,6 +43,7 @@ transformers = "^4.47.1"
 statsmodels = "^0.14.4"
 art = "^6.4"
 pingouin = "^0.5.5"
+patsy = "^1.0.1"
 
 
 [build-system]

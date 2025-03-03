@@ -14,10 +14,54 @@ class ARTRun(Base):
     langs = Column(String)
     domains = Column(String)
     metric = Column(String)
+    max_samples = Column(Integer)
+
     lang_fval = Column(Float)
+    lang_p = Column(Float)
+    lang_df = Column(Float)
+
     domain_fval = Column(Float)
-    paradigm_fval = Column(Float)
+    domain_p = Column(Float)
+    domain_df = Column(Float)
+
     interact_fval = Column(Float)
+    interact_p = Column(Float)
+    interact_df = Column(Float)
+
+
+class ANOVARun(Base):
+    __tablename__ = "anova_runs"
+
+    id = Column(Integer, primary_key=True)
+    langs = Column(String)
+    domains = Column(String)
+    metric = Column(String)
+    max_samples = Column(Integer)
+    typ = Column(Integer)
+
+    lang_fval = Column(Float)
+    lang_p = Column(Float)
+    lang_df = Column(Float)
+    lang_es = Column(Float)
+
+    domain_fval = Column(Float)
+    domain_p = Column(Float)
+    domain_df = Column(Float)
+    domain_es = Column(Float)
+
+    interact_fval = Column(Float)
+    interact_p = Column(Float)
+    interact_df = Column(Float)
+    interact_es = Column(Float)
+
+    @staticmethod
+    def all(session, **kwargs):
+        query = session.query(ANOVARun)
+        for key, value in kwargs.items():
+            if hasattr(ANOVARun, key):
+                query = query.filter(getattr(ANOVARun, key) == value)
+        return query.all()
+
 
 
 class Repo(Base):

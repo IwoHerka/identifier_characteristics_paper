@@ -109,7 +109,7 @@ def calculate_context_coverage():
     session = init_local_session()
     count = 0
 
-    for repo in Repo.all(session, selected=True):
+    for repo in Repo.all(session, selected=True, lang='ocaml'):
         # if repo.ntype is None or repo.ntype == "":
         #     continue
 
@@ -236,11 +236,7 @@ def calculate_basic_metrics_for_repo(repo_id):
 
 def calculate_basic_metrics():
     session = init_local_session()
-    for repo in Repo.all(session, lang='haskell'):
-        if repo.ntype not in ['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
-            'build', 'code', 'log', 'seman', 'struct', 'ui']:
-            continue
-
+    for repo in Repo.all(session, selected=True, lang='clojure'):
         calculate_basic_metrics_for_repo(repo.id)
 
     # with Pool(POOL_SIZE) as p:
@@ -286,19 +282,20 @@ def get_basic_metrics(names, abbreviations):
     else:
         metrics["id_percent_dictionary_words"] = 0
 
-    # 9. Levenshtein distance (multigram, non-unique)
-    console.print(f"Calculating levenshtein distance")
-    pairs = list(combinations(names, 2))
-    if len(pairs) > 0:
-        metrics["median_id_lv_dist"] = get_median_levenshtein_distance(pairs)
-    else:
-        metrics["median_id_lv_dist"] = None
-
     # 10. Conciseness & consistency violations (soft-words, unique)
     console.print(f"Calculating conciseness and consistency violations")
     names = [get_soft_words(name) for name in set(names)]
     consistency_violations, conciseness_violations = get_conciseness_and_consistency(names)
     metrics["num_consistency_violations"] = consistency_violations
     metrics["num_conciseness_violations"] = conciseness_violations
+
+    names = names[:10000]
+    # 9. Levenshtein distance (multigram, non-unique)
+    console.print(f"Calculating levenshtein distance: #{len(names)}")
+    pairs = list(combinations(names, 2))
+    if len(pairs) > 0:
+        metrics["median_id_lv_dist"] = get_median_levenshtein_distance(pairs)
+    else:
+        metrics["median_id_lv_dist"] = None
 
     return metrics

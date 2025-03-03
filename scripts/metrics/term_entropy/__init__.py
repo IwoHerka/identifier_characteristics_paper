@@ -78,7 +78,7 @@ def calculate_term_entropy(normalize=False):
     """
     session = init_local_session()
 
-    for repo in Repo.all(session, lang='javascript'):
+    for repo in Repo.all(session, selected=True):
         console.print(f"Calculating term entropy for repo {repo.id}")
         functions = get_functions_for_repo(repo.id, session)
 

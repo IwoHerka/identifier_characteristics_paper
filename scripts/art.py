@@ -2,6 +2,10 @@ import random
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import itertools
+
+from scipy.stats import mannwhitneyu
+from statsmodels.stats.multitest import multipletests
 import pandas as pd
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
@@ -9,25 +13,12 @@ from scipy.stats import rankdata, chi2
 from itertools import combinations
 from scipy.stats import rankdata
 from multiprocessing import Process
-from db.models import Function, ARTRun
+from db.models import Function, ARTRun, ANOVARun
 from db.utils import init_local_session
+from rich.console import Console
+from patsy.contrasts import Sum
 
-METRICS = [
-  "median_id_length", 
-  "median_id_semantic_similarity", 
-  "median_id_soft_word_count",
-  "id_duplicate_percentage",
-  "num_single_letter_ids",
-  "id_percent_abbreviations",
-  "id_percent_dictionary_words",
-  "num_conciseness_violations",
-  "num_consistency_violations",
-  "term_entropy",
-  "median_id_lv_dist",
-  "context_coverage",
-  "median_id_semantic_similarity",
-  # TODO: grammar
-]
+
 LANG_TO_PARADIGM = {
   "c": "imperative",
   "clojure": "functional",
@@ -42,6 +33,8 @@ LANG_TO_PARADIGM = {
 }
 
 NUM_PROCESSES = 4
+
+console = Console()
 
 
 class AlignedRankTransform:
@@ -100,25 +93,36 @@ class AlignedRankTransform:
 
   @staticmethod
   def execute():
-    # For all langs
-    # For all combinations of domains, at least 3
+    METRICS = [
+      "median_id_length", 
+      "median_id_soft_word_count",
+      "id_duplicate_percentage",
+      "num_single_letter_ids",
+      "id_percent_abbreviations",
+      "id_percent_dictionary_words",
+      "num_conciseness_violations",
+      "num_consistency_violations",
+      "term_entropy",
+      "median_id_lv_dist",
+      "median_id_semantic_similarity",
+      "median_word_concreteness",
+      "context_coverage",
+      # grammar
+    ]
 
-    # ------------------------
-    # 1) Fetch metric data
-    # ------------------------
     langs = ["c", "clojure", "elixir", "erlang", "haskell", "java", "javascript", "ocaml", "python"]
-    # edu, seman, test, struct
 
-    # domains = ["ml", "db", "lang", "game", "infr", "test", "build", "code", "ui", "comp", "log"]
-    domains = ["ui", "db", "ml", "lang", "game"] #, "infr", "code", "comp", "backend", "frontend"]
-    # domains = ["frontend", "backend", "infr", "db", "cli", "lang", "ml", "game", "comp", "build", "code"]
+    domains = [
+      ["ml", "infr", "db", "struct", "edu", "lang", "frontend", "backend", "build", "code", "cli", "comp", "game"],
+      ["db", "lang", "game", "comp", "backend", "frontend", "ml"],
+    ]
     metrics = METRICS
-
-    per_lang_limit = 3000
     session = init_local_session()
 
-    for metric in metrics:
-      AlignedRankTransform._perform_art(langs, [domains], metric, per_lang_limit)
+    for _ in range(10):
+      for per_lang_limit in reversed([6300, 8400, 10600]):
+        for metric in METRICS:
+          AlignedRankTransform._perform_art(langs, domains, metric, per_lang_limit)
 
     # # Random domain combinations
     # def generate_domain_subsets(domains, min_size):
@@ -142,234 +146,373 @@ class AlignedRankTransform:
 
   @staticmethod
   def _perform_art(langs, domains_subset, metric, per_lang_limit):
+    console.print(f"Performing ART for {metric}, domains: {domains_subset}, with {per_lang_limit} examples per language")
     session = init_local_session()
+
+    # ART
+    # for domains in domains_subset:
+    #   metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
+    #   result = AlignedRankTransform._execute_art(metric_values)
+
+    #   run = ARTRun(
+    #     metric=metric,
+    #     langs=" ".join(langs),
+    #     domains=" ".join(domains),
+    #     max_samples=per_lang_limit,
+    #     lang_fval=result["lang_fval"],
+    #     lang_p=result["lang_p"],
+    #     lang_df=result["lang_df"],
+    #     domain_fval=result["domain_fval"],
+    #     domain_p=result["domain_p"],
+    #     domain_df=result["domain_df"],
+    #     interact_fval=result["interact_fval"],
+    #     interact_p=result["interact_p"],
+    #     interact_df=result["interact_df"],
+    #   )
+    #   session.add(run)
+    #   session.commit()
 
     for domains in domains_subset:
       metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
-      # result = AlignedRankTransform._execute(metric_values)
-      result_srh = AlignedRankTransform._execute(metric_values)
 
-      # print(result)
+      result = AlignedRankTransform._identify_language_differences(metric_values)
+      AlignedRankTransform._interpret_language_differences(result)
 
-      # run = ARTRun(
-      #   metric=metric,
-      #   langs=" ".join(langs),
-      #   domains=" ".join(domains),
-      #   lang_fval=result["lang_fval"],
-      #   domain_fval=result["domain_fval"],
-      #   interact_fval=result["interact_fval"],
-      #   paradigm_fval=result.get("paradigm_fval", None),
-      # )
-      # session.add(run)
-      # session.commit()
+    return
 
-  @staticmethod
-  def _execute(metric_values):
-    random.shuffle(metric_values)
+    # Classic ANOVA
+    for domains in domains_subset:
+      type_ = 3
+      metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
+      result = AlignedRankTransform._execute_anova(metric_values, type_)
 
-    values = [value[0] for value in metric_values]
-    languages = [value[1] for value in metric_values]
-    domains = [value[2] for value in metric_values]
-    paradigms = [LANG_TO_PARADIGM[value[1]] for value in metric_values]
-
-    N = len(values)
-    df = pd.DataFrame({'Language': languages, 'Domain': domains, 'Metric': values})
-
-    # Inspect the first few rows
-    # print(df.head())
-
-    # ------------------------
-    # 2) Model-fitting helper function
-    # ------------------------
-    def fit_and_anova(data, formula):
-        """
-        Fits an OLS model using the given formula and prints an ANOVA table.
-        Returns the F value of the model.
-        """
-        model = smf.ols(formula, data=data).fit()
-        anova_table = sm.stats.anova_lm(model, typ=2)
-        print(anova_table)
-        f_val = anova_table['F'][0]
-        return f_val
-
-    # ------------------------
-    # 3) Aligned Rank Transform Steps
-    #    For each effect, we:
-    #      - Fit a model *excluding* that effect (but including others).
-    #      - Subtract the fitted values of that model from the original metric
-    #        => "aligned" metric for the effect of interest
-    #      - Rank the aligned metric
-    #      - Then run an OLS (ANOVA) on the ranks with *only* the factor(s) of interest
-    # ------------------------
-
-    # --- 3a) Main effect of Language ---
-    # Model that includes Domain and the interaction, but NO main effect of Language
-    model_no_lang = smf.ols("Metric ~ C(Domain) + C(Language):C(Domain)", data=df).fit()
-    df['Aligned_Lang'] = df['Metric'] - model_no_lang.fittedvalues
-
-    # Now rank-transform these aligned values
-    df['Ranked_Lang'] = rankdata(df['Aligned_Lang'])
-
-    # Finally, do an ANOVA on the ranks with Language as the predictor
-    print("=== ART for main effect of Language ===")
-    lang_fval = fit_and_anova(df, "Ranked_Lang ~ C(Language)")
-
-    # --- 3b) Main effect of Domain ---
-    # Model that includes Language and the interaction, but NO main effect of Domain
-    model_no_domain = smf.ols("Metric ~ C(Language) + C(Language):C(Domain)", data=df).fit()
-    df['Aligned_Domain'] = df['Metric'] - model_no_domain.fittedvalues
-
-    df['Ranked_Domain'] = rankdata(df['Aligned_Domain'])
-
-    print("=== ART for main effect of Domain ===")
-    domain_fval = fit_and_anova(df, "Ranked_Domain ~ C(Domain)")
-
-    # --- 3c) Interaction Language × Domain ---
-    # Model that includes ONLY the main effects, but NO interaction
-    model_no_inter = smf.ols("Metric ~ C(Language) + C(Domain)", data=df).fit()
-    df['Aligned_Interaction'] = df['Metric'] - model_no_inter.fittedvalues
-
-    df['Ranked_Interaction'] = rankdata(df['Aligned_Interaction'])
-
-    print("=== ART for interaction (Language × Domain) ===")
-    interact_fval = fit_and_anova(df, "Ranked_Interaction ~ C(Language):C(Domain)")
-
-    return {
-      "lang_fval": lang_fval,
-      "domain_fval": domain_fval,
-      "interact_fval": interact_fval,
-    }
+      run = ANOVARun(
+        metric=metric,
+        langs=" ".join(langs),
+        domains=" ".join(domains),
+        typ=5,
+        max_samples=per_lang_limit,
+        lang_fval=result["lang_fval"],
+        lang_p=result["lang_p"],
+        lang_df=result["lang_df"],
+        lang_es=result["lang_es"],
+        domain_fval=result["domain_fval"],
+        domain_p=result["domain_p"],
+        domain_df=result["domain_df"],
+        domain_es=result["domain_es"],
+        interact_fval=result["interact_fval"],
+        interact_p=result["interact_p"],
+        interact_df=result["interact_df"],
+        interact_es=result["interact_es"],
+      )
+      session.add(run)
+      session.commit()
 
   @staticmethod
-  def _execute2(metric_values):
+  def _execute_anova(metric_values, typ):
     """
-    Perform Aligned Rank Transform for a nested design:
-    - Paradigm (main)
-    - Domain (main)
-    - Nested factor: Language within Paradigm
-    - Interaction: Paradigm x Domain
+    Performs a Type III ANOVA on rank-transformed data with sum (effects) coding.
 
-    Expects metric_values to be a list of tuples:
-        (metric_value, language, domain, paradigm)
-    where 'language' is effectively nested in 'paradigm'.
+    metric_values: a list of (value, language, domain) tuples.
+    Example: [(3.4, 'Python', 'Web'), (2.1, 'Java', 'ML'), ...]
+
+    Returns:
+       A dictionary with an ANOVA table (typ=3) from the
+       rank-transformed data, plus partial effect sizes.
     """
 
-    # Shuffle the data (optional, but can help with random tie-breaking in rankdata)
-    random.shuffle(metric_values)
-
-    # Unpack columns
+    # Unpack the metric_values into separate lists
     values = [mv[0] for mv in metric_values]
     languages = [mv[1] for mv in metric_values]
     domains = [mv[2] for mv in metric_values]
-    paradigms = [LANG_TO_PARADIGM[mv[1]] for mv in metric_values]
 
-    # Create a DataFrame
+    # Create DataFrame
     df = pd.DataFrame({
+        'Language': pd.Categorical(languages),
+        'Domain': pd.Categorical(domains),
         'Metric': values,
-        'Language': languages,
-        'Domain': domains,
-        'Paradigm': paradigms
     })
 
-    # For convenience, define a function to fit OLS & get the F-value from ANOVA
-    def fit_and_anova(data, formula):
-        model = smf.ols(formula, data=data).fit()
-        anova_table = sm.stats.anova_lm(model, typ=2)
-        # Return or print desired stats. Here, we'll just print the table for illustration:
-        print(anova_table)
-        return anova_table
-
-    # ---------------------------------------------------------------------
-    # 1) Define the "full model" formula
-    #    We treat language as nested in paradigm (Paradigm:Language) and
-    #    also include Paradigm, Domain, and their interaction (Paradigm:Domain).
-    # ---------------------------------------------------------------------
-    full_model_formula = (
-        "Metric ~ C(Paradigm) "
-        "+ C(Domain) "
-        "+ C(Paradigm):C(Domain) "
-        "+ C(Paradigm):C(Language)"
+    # ------------------------------------------------
+    # 1) Apply sum coding (effects coding) to categorical variables
+    # ------------------------------------------------
+    # By default, statsmodels uses treatment coding, so we must manually set sum coding.
+    df = df.assign(
+        Language=df["Language"].cat.codes,  # Convert categories to numerical representation
+        Domain=df["Domain"].cat.codes
     )
 
-    # ---------------------------------------------------------------------
-    # 2) For each effect of interest, build a "partial model" that EXCLUDES that effect,
-    #    then align & rank, then do a simple ANOVA on only that effect.
-    # ---------------------------------------------------------------------
+    # ------------------------------------------------
+    # 2) Rank the Metric *once* across the entire dataset
+    # ------------------------------------------------
+    df['Ranked'] = rankdata(df['Metric'])
 
-    results = {}
+    # ------------------------------------------------
+    # 3) Fit a Type III ANOVA on the ranks with sum coding
+    # ------------------------------------------------
+    model = smf.ols("Ranked ~ C(Language, Sum)*C(Domain, Sum)", data=df).fit()
+    anova_table = sm.stats.anova_lm(model, typ=3)
 
-    # -------------------------------------------
-    # 2a) Main Effect of Paradigm
-    # -------------------------------------------
-    # Partial model EXCLUDING Paradigm, but INCLUDING Domain,
-    # Paradigm:Domain, Paradigm:Language
-    model_no_paradigm_formula = (
-        "Metric ~ C(Domain) + C(Paradigm):C(Domain) + C(Paradigm):C(Language)"
-    )
-    model_no_paradigm = smf.ols(model_no_paradigm_formula, data=df).fit()
-    df['Aligned_Paradigm'] = df['Metric'] - model_no_paradigm.fittedvalues
-    df['Ranked_Paradigm'] = rankdata(df['Aligned_Paradigm'])
+    # ------------------------------------------------
+    # 4) Calculate a partial effect size for each factor
+    # ------------------------------------------------
+    ss_res = anova_table.loc["Residual", "sum_sq"]
 
-    print("=== ART for main effect of Paradigm (nested design) ===")
-    results['paradigm_fval'] = fit_and_anova(df, "Ranked_Paradigm ~ C(Paradigm)")['F'][0]
+    effect_sizes = {}
+    for factor in anova_table.index:  # Dynamically extract correct names
+        if factor != "Residual":  # Ignore residual row
+            ss_factor = anova_table.loc[factor, "sum_sq"]
+            effect_sizes[factor] = ss_factor / (ss_factor + ss_res)
 
-    # -------------------------------------------
-    # 2b) Main Effect of Domain
-    # -------------------------------------------
-    # Partial model EXCLUDING Domain, but INCLUDING Paradigm,
-    # Paradigm:Domain, Paradigm:Language
-    model_no_domain_formula = (
-        "Metric ~ C(Paradigm) + C(Paradigm):C(Domain) + C(Paradigm):C(Language)"
-    )
-    model_no_domain = smf.ols(model_no_domain_formula, data=df).fit()
-    df['Aligned_Domain'] = df['Metric'] - model_no_domain.fittedvalues
-    df['Ranked_Domain'] = rankdata(df['Aligned_Domain'])
+    results = {
+        "anova_table": anova_table,
 
-    print("=== ART for main effect of Domain (nested design) ===")
-    results['domain_fval'] = fit_and_anova(df, "Ranked_Domain ~ C(Domain)")['F'][0]
+        "lang_p": anova_table.loc['C(Language, Sum)', 'PR(>F)'],
+        "domain_p": anova_table.loc['C(Domain, Sum)', 'PR(>F)'],
+        "interact_p": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'PR(>F)'],
 
-    # -------------------------------------------
-    # 2c) Interaction: Paradigm x Domain
-    # -------------------------------------------
-    # Partial model EXCLUDING Paradigm:Domain, but INCLUDING
-    # Paradigm, Domain, Paradigm:Language
-    model_no_interaction_formula = (
-        "Metric ~ C(Paradigm) + C(Domain) + C(Paradigm):C(Language)"
-    )
-    model_no_interaction = smf.ols(model_no_interaction_formula, data=df).fit()
-    df['Aligned_ParadigmDomain'] = df['Metric'] - model_no_interaction.fittedvalues
-    df['Ranked_ParadigmDomain'] = rankdata(df['Aligned_ParadigmDomain'])
+        "lang_df": anova_table.loc['C(Language, Sum)', 'df'],
+        "domain_df": anova_table.loc['C(Domain, Sum)', 'df'],
+        "interact_df": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'df'],
 
-    print("=== ART for interaction (Paradigm x Domain) ===")
-    results['interact_fval'] = fit_and_anova(
-        df, "Ranked_ParadigmDomain ~ C(Paradigm):C(Domain)"
-    )['F'][0]
+        "lang_fval": anova_table.loc['C(Language, Sum)', 'F'],
+        "domain_fval": anova_table.loc['C(Domain, Sum)', 'F'],
+        "interact_fval": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'F'],
 
-    # -------------------------------------------
-    # 2d) Nested Factor: Paradigm:Language
-    # -------------------------------------------
-    # This is effectively the "Language-within-Paradigm" effect.
-    # Partial model EXCLUDING Paradigm:Language, but INCLUDING
-    # Paradigm, Domain, Paradigm:Domain
-    model_no_nested_formula = (
-        "Metric ~ C(Paradigm) + C(Domain) + C(Paradigm):C(Domain)"
-    )
-    model_no_nested = smf.ols(model_no_nested_formula, data=df).fit()
-    df['Aligned_Nested'] = df['Metric'] - model_no_nested.fittedvalues
-    df['Ranked_Nested'] = rankdata(df['Aligned_Nested'])
+        "lang_es": effect_sizes['C(Language, Sum)'],
+        "domain_es": effect_sizes['C(Domain, Sum)'],
+        "interact_es": effect_sizes['C(Language, Sum):C(Domain, Sum)'],
+    }
 
-    print("=== ART for nested factor (Paradigm:Language) ===")
-    # Now we run an OLS on the ranks with the nested factor alone.
-    # Because we are treating "Language" as nested in "Paradigm," we
-    # specify "C(Paradigm):C(Language)" in the formula:
-    results['lang_fval'] = fit_and_anova(
-        df, "Ranked_Nested ~ C(Paradigm):C(Language)"
-    )['F'][0]
+    print("\nANOVA Table (Type III, Sum Coding):\n", anova_table)
+    print("\nPartial Eta-Squared Effect Sizes:\n", effect_sizes)
 
+    return results    
+
+  @staticmethod
+  def _identify_language_differences(metric_values, alpha=0.05):
+    """
+    Identifies language pairs with largest metric differences using:
+    - Mann-Whitney U tests (non-parametric)
+    - Cliff's delta effect sizes
+    - Holm-Bonferroni correction
+    - Rank-transformed data (for consistency with ANOVA)
+    
+    Returns sorted list of pairs by effect size magnitude.
+    """
+    # Create DataFrame with ranked data
+    df = pd.DataFrame({
+        'Language': [mv[1] for mv in metric_values],
+        'Metric': [mv[0] for mv in metric_values]
+    })
+    
+    # Rank across entire dataset (aligns with ANOVA procedure)
+    df['Ranked'] = rankdata(df['Metric'])
+    
+    # Get unique languages and their ranked metrics
+    languages = df['Language'].unique()
+    language_pairs = list(itertools.combinations(languages, 2))
+    
+    results = []
+    for lang1, lang2 in language_pairs:
+        # Get ranks for both languages (all domains combined)
+        ranks1 = df[df['Language'] == lang1]['Ranked']
+        ranks2 = df[df['Language'] == lang2]['Ranked']
+        
+        # Mann-Whitney U test
+        u_stat, p_val = mannwhitneyu(ranks1, ranks2, alternative='two-sided')
+        
+        # Cliff's delta calculation
+        n1, n2 = len(ranks1), len(ranks2)
+        cliff_delta = (2 * u_stat / (n1 * n2)) - 1  # Range: [-1, 1]
+        
+        results.append({
+            'comparison': f"{lang1} vs {lang2}",
+            'p_value': p_val,
+            'cliffs_delta': cliff_delta,
+            'n1': n1,
+            'n2': n2
+        })
+    
+    # Multiple comparisons adjustment
+    p_values = [res['p_value'] for res in results]
+    reject, adj_p_values, _, _ = multipletests(p_values, alpha=alpha, method='holm')
+    
+    # Add adjusted p-values and significance
+    for i, res in enumerate(results):
+        res['adj_p_value'] = adj_p_values[i]
+        res['significant'] = adj_p_values[i] < alpha
+    
+    # Sort by effect size magnitude (absolute value)
+    results.sort(key=lambda x: abs(x['cliffs_delta']), reverse=True)
+    
     return results
 
   @staticmethod
-  def _execute3(metric_values):
+  def _interpret_language_differences(results, alpha=0.05, top_n=10):
+    """Prints formatted interpretation of language comparisons"""
+    print(f"\n{'Language Pair':<25} {'Cliffs δ':<10} {'p-value':<12} {'Sig.':<6}")
+    print("-"*55)
+    for res in results[:top_n]:
+        sig = "***" if res['adj_p_value'] < 0.001 else \
+              "**" if res['adj_p_value'] < 0.01 else \
+              "*" if res['significant'] else ""
+        print(f"{res['comparison']:<25} {res['cliffs_delta']:+.2f}{sig:<5} {res['adj_p_value']:.4f}")
+
+    # Print key findings
+    sig_results = [res for res in results if res['significant']]
+    print(f"\nKey Findings (α={alpha}):")
+    print(f"- Total comparisons: {len(results)}")
+    print(f"- Significant pairs: {len(sig_results)}")
+    
+    if sig_results:
+        print("\nLargest Differences:")
+        for res in sig_results[:5]:
+            direction = "higher" if res['cliffs_delta'] > 0 else "lower"
+            print(f"- {res['comparison']}: {direction} ranks (δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
+
+  @staticmethod
+  def _nonparametric_simple_effects_test(metric_values, alpha=0.05):
+    """
+    Non-parametric pairwise tests for unbalanced, non-normal data.
+    Uses rank-transformed metric and Holm-Bonferroni correction.
+    """
+    # Prepare DataFrame with original labels and ranks
+    df = pd.DataFrame({
+        'Language': [mv[1] for mv in metric_values],
+        'Domain': [mv[2] for mv in metric_values],
+        'Metric': [mv[0] for mv in metric_values]
+    })
+    df['Ranked'] = rankdata(df['Metric'])  # Use same rank transform as ANOVA
+    
+    # Generate all (lang, domain) pairs
+    pairs = list(df.groupby(['Language', 'Domain']).groups.keys())
+    
+    results = []
+    for pair in itertools.combinations(pairs, 2):
+        (lang1, domain1), (lang2, domain2) = pair
+        # Extract ranked data for groups
+        group1 = df[(df['Language'] == lang1) & (df['Domain'] == domain1)]['Ranked']
+        group2 = df[(df['Language'] == lang2) & (df['Domain'] == domain2)]['Ranked']
+        
+        # Mann-Whitney U test (non-parametric, handles unbalanced groups)
+        u_stat, p_val = mannwhitneyu(group1, group2, alternative='two-sided')
+        
+        # Cliff's delta (non-parametric effect size)
+        n1, n2 = len(group1), len(group2)
+        cliff_delta = (2 * u_stat / (n1 * n2)) - 1  # Ranges [-1, 1]
+        
+        results.append({
+            'comparison': f"{lang1} ({domain1}) vs {lang2} ({domain2})",
+            'p_value': p_val,
+            'cliffs_delta': cliff_delta,
+            'n1': n1,
+            'n2': n2
+        })
+    
+    # Apply Holm-Bonferroni correction (less conservative)
+    p_values = [res['p_value'] for res in results]
+    reject, adj_p_values, _, _ = multipletests(p_values, alpha=alpha, method='holm')
+    
+    # Update results
+    for i, res in enumerate(results):
+        res['adj_p_value'] = adj_p_values[i]
+        res['significant'] = adj_p_values[i] < alpha
+    
+    # Sort by effect size magnitude
+    results.sort(key=lambda x: abs(x['cliffs_delta']), reverse=True)
+    
+    return results
+
+  @staticmethod
+  def _interpret_simple_effects(results, alpha=0.05):
+    """Prints formatted interpretation of simple effects results"""
+    print(f"\n{'Comparison':<40} {'Cliffs δ':<10} {'Adj p-value':<12} {'Significant':<10}")
+    print("-"*75)
+    for res in results:
+        sig = "***" if res['adj_p_value'] < 0.001 else "**" if res['adj_p_value'] < 0.01 else "*" if res['significant'] else ""
+        print(f"{res['comparison']:<40} {res['cliffs_delta']:+.2f}{sig:<10} {res['adj_p_value']:.4f}       {str(res['significant'])}")
+
+    # Print key findings
+    sig_results = [res for res in results if res['significant']]
+    print(f"\nFound {len(sig_results)} significant pairs (α={alpha}):")
+    for res in sig_results[:5]:  # Show top 5
+        direction = "higher" if res['cliffs_delta'] > 0 else "lower"
+        print(f"- {res['comparison']}: {direction} ranks (δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
+
+
+  # @staticmethod
+  # def _execute_anova(metric_values, typ):
+  #   """
+  #   metric_values: a list of (value, language, domain) tuples.
+  #   Example: [(3.4, 'Python', 'Web'), (2.1, 'Java', 'ML'), ...]
+
+  #   Returns:
+  #      A dictionary with an ANOVA table (typ=2) from the
+  #      rank-transformed data, plus partial effect sizes.
+  #   """
+
+  #   # Unpack the metric_values into separate lists
+  #   values = [mv[0] for mv in metric_values]
+  #   languages = [mv[1] for mv in metric_values]
+  #   domains = [mv[2] for mv in metric_values]
+
+  #   # Create DataFrame
+  #   df = pd.DataFrame({
+  #       'Subject': range(len(values)),
+  #       'Language': languages,
+  #       'Domain': domains,
+  #       'Metric': values,
+  #   })
+
+  #   # ------------------------------------------------
+  #   # 1) Rank the Metric *once* across the entire dataset
+  #   # ------------------------------------------------
+  #   df['Ranked'] = rankdata(df['Metric'])
+
+  #   # ------------------------------------------------
+  #   # 2) Fit a standard two-way ANOVA on the ranks
+  #   # ------------------------------------------------
+  #   # Model formula includes main effects + interaction
+  #   # so we can see if there's a significant Language*Domain effect as well.
+  #   model = smf.ols("Ranked ~ C(Language, Sum)*C(Domain, Sum)", data=df).fit()
+  #   anova_table = sm.stats.anova_lm(model, typ=typ)
+
+  #   # ------------------------------------------------
+  #   # 3) Calculate a partial effect size for each factor
+  #   #    (e.g., rank-based partial eta^2 or epsilon^2)
+  #   # ------------------------------------------------
+  #   # We'll do the usual ratio: SS_effect / (SS_effect + SS_residual)
+  #   # from the single unified model
+  #   ss_res = anova_table.loc["Residual", "sum_sq"]
+
+  #   effect_sizes = {}
+  #   for factor in ["C(Language, Sum)", "C(Domain, Sum)", "C(Language, Sum):C(Domain, Sum)"]:
+  #       ss_factor = anova_table.loc[factor, "sum_sq"]
+  #       effect_sizes[factor] = ss_factor / (ss_factor + ss_res)
+
+  #   results = {
+  #       "lang_p": anova_table.loc['C(Language, Sum)', 'PR(>F)'],
+  #       "domain_p": anova_table.loc['C(Domain, Sum)', 'PR(>F)'],
+  #       "interact_p": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'PR(>F)'],
+
+  #       "lang_df": anova_table.loc['C(Language, Sum)', 'df'],
+  #       "domain_df": anova_table.loc['C(Domain, Sum)', 'df'],
+  #       "interact_df": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'df'],
+
+  #       "lang_fval": anova_table.loc['C(Language, Sum)', 'F'],
+  #       "domain_fval": anova_table.loc['C(Domain, Sum)', 'F'],
+  #       "interact_fval": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'F'],
+
+  #       "lang_es": effect_sizes['C(Language, Sum)'],
+  #       "domain_es": effect_sizes['C(Domain, Sum)'],
+  #       "interact_es": effect_sizes['C(Language, Sum):C(Domain, Sum)'],
+  #   }
+  #   print(results)
+  #   return results
+
+  @staticmethod
+  def _execute_art(metric_values):
       """
       metric_values is expected to be a list of tuples/lists:
       [
@@ -378,46 +521,15 @@ class AlignedRankTransform:
         ...
       ]
       """
-      # Shuffle data just as in your original code (optional).
-      random.shuffle(metric_values)
-
-      # Extract columns into separate lists
       values = [value[0] for value in metric_values]
       languages = [value[1] for value in metric_values]
       domains = [value[2] for value in metric_values]
-      paradigms = [LANG_TO_PARADIGM[lang] for lang in languages]
 
-      # Create a DataFrame
       df = pd.DataFrame({
           'Language': languages,
           'Domain': domains,
           'Metric': values
       })
-
-      # ---------------------------------------------------------
-      # Helper Functions for Partial Eta Squared / Partial Omega
-      # ---------------------------------------------------------
-      def partial_eta_squared(anova_tbl, factor_label):
-          """Compute Partial Eta Squared for a given factor from the ANOVA table."""
-          ss_effect = anova_tbl.loc[factor_label, 'sum_sq']
-          ss_residual = anova_tbl.loc['Residual', 'sum_sq']
-          return ss_effect / (ss_effect + ss_residual)
-
-      def partial_omega_squared(anova_tbl, factor_label):
-          """
-          Compute Partial Omega Squared for a given factor from an ANOVA table
-          generated by sm.stats.anova_lm(model, typ=2).
-          """
-          ss_effect = anova_tbl.loc[factor_label, 'sum_sq']
-          df_effect = anova_tbl.loc[factor_label, 'df']
-          ss_residual = anova_tbl.loc['Residual', 'sum_sq']
-          
-          # Manually compute mean square error (MSE) for the residual row:
-          ms_error = ss_residual / anova_tbl.loc['Residual', 'df']
-          
-          # Partial omega squared formula
-          #   ω_p^2 = (SS_effect - df_effect * MS_error) / (SS_effect + SS_residual + MS_error)
-          return (ss_effect - df_effect * ms_error) / (ss_effect + ss_residual + ms_error)
 
       def fit_and_anova(data, formula, factor_label):
           """
@@ -426,21 +538,13 @@ class AlignedRankTransform:
           """
           model = smf.ols(formula, data=data).fit()
           anova_table = sm.stats.anova_lm(model, typ=2)
-          # print(anova_table)  # For debugging
+          # print(anova_table) 
 
-          # Extract the row corresponding to the factor of interest
           f_val = anova_table.loc[factor_label, 'F']
           p_val = anova_table.loc[factor_label, 'PR(>F)']
-          pes = partial_eta_squared(anova_table, factor_label)
-          # pos = partial_omega_squared(anova_table, factor_label)
-          pos = 0.0
+          df_val = anova_table.loc[factor_label, 'df']
 
-          print(f"ANOVA for {factor_label}:")
-          print(f"  F-value = {f_val:.3f}, p-value = {p_val:.4g}")
-          print(f"  Partial eta squared = {pes:.3f}")
-          # print(f"  Partial omega squared = {pos:.3f}\n")
-
-          return f_val, pes, pos
+          return f_val, p_val, df_val
 
       # ---------------------------------------------------------
       # 3) Aligned Rank Transform (ART) Steps
@@ -456,8 +560,7 @@ class AlignedRankTransform:
       df['Aligned_Lang'] = df['Metric'] - model_no_lang.fittedvalues
       df['Ranked_Lang'] = rankdata(df['Aligned_Lang'])
 
-      print("=== ART for main effect of Language ===")
-      lang_fval, lang_eta, lang_omega = fit_and_anova(
+      lang_fval, lang_p, lang_df = fit_and_anova(
           df, "Ranked_Lang ~ C(Language)", factor_label="C(Language)"
       )
 
@@ -467,8 +570,7 @@ class AlignedRankTransform:
       df['Aligned_Domain'] = df['Metric'] - model_no_domain.fittedvalues
       df['Ranked_Domain'] = rankdata(df['Aligned_Domain'])
 
-      print("=== ART for main effect of Domain ===")
-      domain_fval, domain_eta, domain_omega = fit_and_anova(
+      domain_fval, domain_p, domain_df = fit_and_anova(
           df, "Ranked_Domain ~ C(Domain)", factor_label="C(Domain)"
       )
 
@@ -478,160 +580,19 @@ class AlignedRankTransform:
       df['Aligned_Interaction'] = df['Metric'] - model_no_inter.fittedvalues
       df['Ranked_Interaction'] = rankdata(df['Aligned_Interaction'])
 
-      print("=== ART for interaction (Language × Domain) ===")
-      interact_fval, interact_eta, interact_omega = fit_and_anova(
+      interact_fval, interact_p, interact_df = fit_and_anova(
           df, "Ranked_Interaction ~ C(Language):C(Domain)", 
           factor_label="C(Language):C(Domain)"
       )
 
       return {
           "lang_fval": lang_fval,
-          "lang_eta": lang_eta,
-          "lang_omega": lang_omega,
+          "lang_df": lang_df,
+          "lang_p": lang_p,
           "domain_fval": domain_fval,
-          "domain_eta": domain_eta,
-          "domain_omega": domain_omega,
+          "domain_df": domain_df,
+          "domain_p": domain_p,
           "interact_fval": interact_fval,
-          "interact_eta": interact_eta,
-          "interact_omega": interact_omega
+          "interact_df": interact_df,
+          "interact_p": interact_p,
       }
-
-  @staticmethod
-  def _execute_srh(metric_values):
-      """
-      metric_values: list of tuples (metric, language, domain)
-      
-      Returns a Scheirer-Ray-Hare results table (DataFrame).
-      """
-      # Shuffle data if you wish (optional)
-      random.shuffle(metric_values)
-
-      # Extract columns
-      values = [row[0] for row in metric_values]
-      languages = [row[1] for row in metric_values]
-      domains = [row[2] for row in metric_values]
-      paradigms = [LANG_TO_PARADIGM[lang] for lang in languages]
-
-      # Create DataFrame
-      df = pd.DataFrame({
-          'Metric': values,
-          'Language': languages,
-          'Domain': domains
-      })
-
-      # Run Scheirer-Ray-Hare test
-      results = AlignedRankTransform._scheirer_ray_hare_test(df, dv='Metric', factorA='Language', factorB='Domain')
-
-      # Print or return the table
-      print("=== Scheirer-Ray-Hare Test (Language, Domain) ===")
-      print(results)
-      return results
-
-  @staticmethod
-  def _scheirer_ray_hare_test(df, dv, factorA, factorB):
-    """
-    Perform the Scheirer-Ray-Hare test for two factors (factorA, factorB) on
-    dependent variable (dv) in the given DataFrame `df`.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Must contain columns [dv, factorA, factorB].
-    dv : str
-        The name of the dependent variable column (numeric).
-    factorA : str
-        The name of the first factor (categorical).
-    factorB : str
-        The name of the second factor (categorical).
-
-    Returns
-    -------
-    results : pd.DataFrame
-        A DataFrame summarizing the H-statistics and p-values for:
-        [ factorA, factorB, interaction, error ]
-        Similar to an ANOVA table, but using SRH-based H values and chi-square p-values.
-    """
-    # 1) Extract data
-    data = df[[dv, factorA, factorB]].copy()
-    data.dropna(inplace=True)
-
-    # 2) Rank the entire DV column (like Kruskal-Wallis)
-    data['Rank'] = rankdata(data[dv], method='average')
-
-    # Basic checks
-    levelsA = data[factorA].unique()
-    levelsB = data[factorB].unique()
-    a = len(levelsA)
-    b = len(levelsB)
-    N = len(data)
-
-    # 3) Group by each cell [factorA x factorB]: sum of ranks, n per cell
-    #    R_ij = sum of ranks in cell (i,j)
-    grouped = data.groupby([factorA, factorB])['Rank']
-    sum_ranks = grouped.sum()
-    count_per_cell = grouped.count()
-
-    # 4) Row/Column sums of ranks
-    #    R_{i.} = sum of ranks for row i (factorA level)
-    #    R_{.j} = sum of ranks for column j (factorB level)
-    sum_ranks_A = sum_ranks.groupby(level=0).sum()  # Summation across factorB
-    sum_ranks_B = sum_ranks.groupby(level=1).sum()  # Summation across factorA
-
-    # 5) Cell sizes per row/column
-    #    n_{i.}, n_{.j}, etc.
-    n_by_A = count_per_cell.groupby(level=0).sum()
-    n_by_B = count_per_cell.groupby(level=1).sum()
-
-    # 6) Compute the Sums of Squares-like terms using SRH formulas
-    #    H(A)   = 12 / [N*(N+1)] * Σ [ (R_{i.}^2 / n_{i.}) ] - 3*(N+1)
-    #    H(B)   = analogous for factorB
-    #    H(AB)  = 12 / [N*(N+1)] * Σ [ (R_{ij}^2 / n_{ij}) ] - H(A) - H(B) - 3*(N+1)
-    #    H(total) = N*(N+1)/12
-    #    H(error) = H(total) - [H(A) + H(B) + H(AB)]
-    #    The degrees of freedom are:
-    #      df(A) = a - 1
-    #      df(B) = b - 1
-    #      df(AB)= (a-1)*(b-1)
-    #      df(error) = N - a*b
-
-    # Helper to do the "sum of (row-sums^2 / n)" part
-    def sum_of_squares_by_group(rank_sums, counts):
-        return np.sum( (rank_sums**2) / counts )
-
-    # a) H(A)
-    termA = sum_of_squares_by_group(sum_ranks_A.values, n_by_A.values)
-    H_A = (12.0 / (N * (N+1))) * termA - 3*(N+1)
-
-    # b) H(B)
-    termB = sum_of_squares_by_group(sum_ranks_B.values, n_by_B.values)
-    H_B = (12.0 / (N * (N+1))) * termB - 3*(N+1)
-
-    # c) H(AB)
-    termAB = sum_of_squares_by_group(sum_ranks.values, count_per_cell.values)
-    H_AB = (12.0 / (N * (N+1))) * termAB - H_A - H_B - 3*(N+1)
-
-    # d) H(total) and H(error)
-    H_total = N * (N+1) / 12.0
-    H_error = H_total - (H_A + H_B + H_AB)
-
-    # 7) Degrees of freedom
-    dfA = a - 1
-    dfB = b - 1
-    dfAB = (a-1)*(b-1)
-    dfE = N - a*b
-
-    # 8) Convert H-values to p-values using chi-square approximation
-    #    (Some texts suggest corrections for large ties or unbalanced data.)
-    p_A = 1 - chi2.cdf(H_A, dfA) if dfA > 0 else np.nan
-    p_B = 1 - chi2.cdf(H_B, dfB) if dfB > 0 else np.nan
-    p_AB = 1 - chi2.cdf(H_AB, dfAB) if dfAB > 0 else np.nan
-
-    # 9) Create a summary table akin to ANOVA
-    results = pd.DataFrame({
-        'Source': [factorA, factorB, f'{factorA}:{factorB}', 'Error'],
-        'H': [H_A, H_B, H_AB, H_error],
-        'df': [dfA, dfB, dfAB, dfE],
-        'p-value': [p_A, p_B, p_AB, np.nan]  # error doesn't have a p-value
-    })
-
-    return results

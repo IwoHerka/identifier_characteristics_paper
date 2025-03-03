@@ -24,7 +24,7 @@ LANGS = [
     "fortran",
     "haskell",
     "java",
-    # "javascript",
+    "javascript",
     "ocaml",
     "python",
 ]
@@ -178,16 +178,7 @@ def get_multigram_concreteness(word):
 def process(lang):
   session = init_local_session()
 
-  for repo in Repo.all(session, lang=lang):
-    if repo.ntype is None or repo.ntype == "":
-        continue
-
-    if repo.ntype not in ['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
-            'build', 'code', 'log', 'seman', 'struct', 'ui']:
-      continue
-
-    # if repo.lang in ["javascript", "haskell"]:
-    #   continue
+  for repo in Repo.all(session, selected=True):
 
     functions = Function.filter_by(session, repo_id=repo.id)
 

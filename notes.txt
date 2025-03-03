@@ -179,3 +179,21 @@ User interface
 Applications
 Other libraries
 Other
+
+
+
+
+
+To directly compare the effect of Language vs. Domain in a non-parametric,
+two-factor scenario, you need a single unified model (one partition of the total
+variation). Three broad ways to achieve that:
+
+    Permutation-based two-factor ANOVA (Freedman–Lane, etc.)
+    A single-step or fully aligned rank transform approach (an advanced version of ART)
+    A robust or rank-based two-way procedure that yields one table (e.g., WRS2 or nparLD in R)
+
+All of these let you see which factor “is more significant” or has the “bigger”
+partial sum of squares on a consistent denominator. By contrast, methods that do
+partial expansions per factor (classic ART, Scheirer–Ray–Hare, multiple
+“aligned(...) for X” columns) will not let you compare Language vs. Domain
+directly because they produce separate partial models.

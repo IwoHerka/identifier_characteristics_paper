@@ -188,10 +188,8 @@ def get_grammar_by_name(name):
 def get_distinct_function_names_without_grammar():
     names_by_lang = (
         session.query(Function.name)
-        .filter(Function.domain.in_(['frontend', 'backend', 'infr', 'edu', 'db', 'cli', 'lang', 'ml', 'game', 'test', 'comp',
-            'build', 'code', 'log', 'seman', 'struct', 'ui']))
+        .filter(Function.selected == True)
         .filter((Function.grammar == None) | (Function.grammar == ""))
-        .filter(~Function.lang.in_(["javascript", "haskell_"]))
         .distinct()
         .all()
     )
