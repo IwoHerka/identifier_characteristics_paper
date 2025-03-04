@@ -145,7 +145,7 @@ def validate_anova_runs():
       "median_id_semantic_similarity",
       "median_word_concreteness",
       "context_coverage",
-      # grammar
+      "grammar"
     ]
 
     for metric in METRICS:
@@ -233,7 +233,7 @@ def validate_art_runs():
       "median_id_semantic_similarity",
       "median_word_concreteness",
       "context_coverage",
-      # grammar
+      "grammar_hash"
     ]
     for metric in METRICS:
         lang_p = []
@@ -253,9 +253,9 @@ def validate_art_runs():
         mean_lang_p = statistics.mean(lang_p)
         mean_domain_p = statistics.mean(domain_p)
         mean_interact_p = statistics.mean(interact_p)
-        max_lang_p = max(lang_p)
-        max_domain_p = max(domain_p)
-        max_interact_p = max(interact_p)
+        std_lang_p = statistics.stdev(lang_p)
+        std_domain_p = statistics.stdev(domain_p)
+        std_interact_p = statistics.stdev(interact_p)
 
         def fn_print(v):
             if f"{v:.4f}" == "0.0000":
@@ -265,16 +265,33 @@ def validate_art_runs():
             else:
                 return f"{v:.4f}"
 
-        # console.print(f"{metric.replace('_', ' ')} & {fn_print(median_lang_p)}, {fn_print(mean_lang_p)}, {fn_print(max_lang_p)} & {fn_print(median_domain_p)}, {fn_print(mean_domain_p)}, {fn_print(max_domain_p)} & {fn_print(median_interact_p)}, {fn_print(mean_interact_p)}, {fn_print(max_interact_p)} \\\\")
+        console.print(f"{metric.replace('_', ' ')} & {fn_print(median_lang_p)}, {fn_print(mean_lang_p)}, {fn_print(std_lang_p)} & {fn_print(median_domain_p)}, {fn_print(mean_domain_p)}, {fn_print(std_domain_p)} & {fn_print(median_interact_p)}, {fn_print(mean_interact_p)}, {fn_print(std_interact_p)} \\\\")
 
 
 if __name__ == "__main__":
     # calculate_number_of_function_domain()
-    validate_anova_runs()
-    # validate_art_runs()
+    # validate_anova_runs()
+    validate_art_runs()
 
     # session = init_local_session()
     # # model = fasttext.load_model("build/models/ft_19M_100x1000_5ws.bin")
+
+    # grammar_to_index = {}
+    # current_index = 0
+
+    # for lang in LANGS:
+    #     for repo in Repo.all(session, lang=lang, selected=True):
+    #         functions = Function.filter_by(session, repo_id=repo.id)
+
+    #         for function in functions:
+    #             if function.grammar not in grammar_to_index:
+    #                 grammar_to_index[function.grammar] = current_index
+    #                 current_index += 1
+    #             function.grammar_hash = grammar_to_index[function.grammar]
+    #             session.add(function)
+    
+    #         session.commit()
+
 
     # for lang in LANGS:
     #     for repo in Repo.all(session, lang=lang, selected=True):

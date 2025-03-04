@@ -179,6 +179,7 @@ class Function(Base):
     metrics = Column(String, nullable=True, default=None)
 
     grammar                       = Column(String, nullable=True)
+    grammar_hash                  = Column(Integer, nullable=True)
     median_id_semantic_similarity = Column(Float, nullable=True)
     median_id_length              = Column(Float, nullable=True)
     median_id_syllable_count      = Column(Float, nullable=True) 
