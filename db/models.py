@@ -11,6 +11,7 @@ class ARTRun(Base):
     __tablename__ = "art_runs"
 
     id = Column(Integer, primary_key=True)
+
     langs = Column(String)
     domains = Column(String)
     metric = Column(String)
@@ -34,6 +35,30 @@ class ARTRun(Base):
         for key, value in kwargs.items():
             if hasattr(ARTRun, key):
                 query = query.filter(getattr(ARTRun, key) == value)
+        return query.all()
+
+
+class MannWhitneyu(Base):
+    __tablename__ = "mannwhitneyu_runs"
+
+    id = Column(Integer, primary_key=True)
+    metric = Column(String)
+    max_samples = Column(Integer)
+
+    language = Column(String)
+    p_value = Column(Float)
+    adj_p_value = Column(Float)
+    cliffs_delta = Column(Float)
+    median_diff = Column(Float)
+    n_obs = Column(Float)
+    overall_median = Column(Float)
+
+    @staticmethod
+    def all(session, **kwargs):
+        query = session.query(MannWhitneyu)
+        for key, value in kwargs.items():
+            if hasattr(MannWhitneyu, key):
+                query = query.filter(getattr(MannWhitneyu, key) == value)
         return query.all()
 
 

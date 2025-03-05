@@ -9,6 +9,7 @@ import fasttext
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from matplotlib.cm import get_cmap
 
 from multiprocessing import Process
 from itertools import combinations
@@ -17,7 +18,7 @@ from nltk.corpus import gutenberg
 from collections import Counter, defaultdict
 from rich.console import Console
 from scipy.spatial.distance import cosine
-from db.models import Function, Repo, ANOVARun, ARTRun
+from db.models import Function, Repo, ANOVARun, ARTRun, MannWhitneyu
 import casestyle
 from db.utils import init_local_session
 from itertools import combinations
@@ -145,8 +146,10 @@ def validate_anova_runs():
       "median_id_semantic_similarity",
       "median_word_concreteness",
       "context_coverage",
-      "grammar"
+      "grammar_hash"
     ]
+
+    console.print("metric, median_lang_es, mean_lang_es, std_lang_es, median_domain_es, mean_domain_es, std_domain_es, median_interact_es, mean_interact_es, std_interact_es")
 
     for metric in METRICS:
         lang_es = []
@@ -179,7 +182,8 @@ def validate_anova_runs():
         # if median_interact_es > median_lang_es or mean_interact_es > mean_lang_es:
         #     console.print(f"O")
 
-        console.print(f"{metric.replace('_', ' ')} & {median_lang_es:.4f}, {mean_lang_es:.4f}, {std_lang_es:.4f} & {median_domain_es:.4f}, {mean_domain_es:.4f}, {std_domain_es:.4f} & {median_interact_es:.4f}, {mean_interact_es:.4f}, {std_interact_es:.4f} \\\\")
+        # console.print(f"{metric.replace('_', ' ')} & {median_lang_es:.4f}, {mean_lang_es:.4f}, {std_lang_es:.4f} & {median_domain_es:.4f}, {mean_domain_es:.4f}, {std_domain_es:.4f} & {median_interact_es:.4f}, {mean_interact_es:.4f}, {std_interact_es:.4f} \\\\")
+        console.print(f"{metric.replace('_', ' ')}, {median_lang_es:.4f}, {mean_lang_es:.4f}, {std_lang_es:.4f}, {median_domain_es:.4f}, {mean_domain_es:.4f}, {std_domain_es:.4f}, {median_interact_es:.4f}, {mean_interact_es:.4f}, {std_interact_es:.4f}")
 
     return
 
@@ -268,10 +272,139 @@ def validate_art_runs():
         console.print(f"{metric.replace('_', ' ')} & {fn_print(median_lang_p)}, {fn_print(mean_lang_p)}, {fn_print(std_lang_p)} & {fn_print(median_domain_p)}, {fn_print(mean_domain_p)}, {fn_print(std_domain_p)} & {fn_print(median_interact_p)}, {fn_print(mean_interact_p)}, {fn_print(std_interact_p)} \\\\")
 
 
+def validate_interaction_deviations():
+    METRICS = [
+      "median_id_length", 
+      "median_id_soft_word_count",
+      "id_duplicate_percentage",
+      "num_single_letter_ids",
+      "id_percent_abbreviations",
+      "id_percent_dictionary_words",
+      "num_conciseness_violations",
+      "num_consistency_violations",
+      "term_entropy",
+      "median_id_lv_dist",
+      "median_id_semantic_similarity",
+      "median_word_concreteness",
+      "context_coverage",
+      "grammar_hash"
+    ]
+
+    session = init_local_session()
+    metric_to_values = defaultdict(lambda: [])
+
+    for metric in METRICS:
+        for run in MannWhitneyu.all(session, metric=metric):
+            if run.adj_p_value < 0.05:
+                metric_to_values[metric].append((run.language, run.cliffs_delta))
+
+    x = defaultdict(lambda: [])
+
+    for metric, values in metric_to_values.items():
+        lang_to_cliffs_delta = defaultdict(list)
+        for lang, cliffs_delta in values:
+            lang_to_cliffs_delta[lang].append(cliffs_delta)
+
+        lang_to_mean_cliffs_delta = {lang: statistics.mean(cliffs_deltas) for lang, cliffs_deltas in lang_to_cliffs_delta.items()}
+        # sorted_langs = sorted(lang_to_mean_cliffs_delta.items(), key=lambda x: x[1], reverse=True)
+
+        for lang, mean in lang_to_mean_cliffs_delta.items():
+            x[metric].append((lang, mean))
+
+    plot_cliffs_spread(x)
+
+
+def plot_cliffs_spread(metric_to_values):
+    """
+    Plots the spread of Cliff's Delta for each language for each metric.
+
+    Parameters:
+    -----------
+    metric_to_values : dict
+        Dictionary where keys are metric names, and values are lists of tuples:
+          [ (language, cliffs_delta), (language, cliffs_delta), ... ]
+
+    Example:
+    --------
+    METRICS = [
+        "median_id_length",
+        "median_id_soft_word_count",
+        "context_coverage"
+    ]
+    metric_to_values = {
+        "median_id_length": [
+            ("python", 0.2), ("java", -0.1), ("c++", 0.05)
+        ],
+        "median_id_soft_word_count": [
+            ("python", 0.3), ("c++", -0.2)
+        ],
+        "context_coverage": [
+            ("java", 0.15), ("c++", 0.25)
+        ]
+    }
+    plot_cliffs_spread(metric_to_values)
+    """
+
+    # Collect all languages for color assignment
+    languages = set()
+    for metric, values in metric_to_values.items():
+        print(f"----------------- {metric} -----------------")
+        for lang, cliffs_delta in values:
+            print(f"{lang}: {cliffs_delta}")
+            languages.add(lang)
+    languages = sorted(languages)
+
+    # Assign a distinct color for each language using a colormap
+    colormap = get_cmap('tab10')  # You can choose a different colormap if you prefer
+    language_to_color = {}
+    for i, lang in enumerate(languages):
+        color = colormap(i % 10)  # cycle through up to 10 distinct colors in tab10
+        language_to_color[lang] = color
+
+    plt.figure(figsize=(10, 6))
+
+    # Sort or simply list the metrics to have a consistent order on the y-axis
+    metrics_list = sorted(metric_to_values.keys())
+    
+    # Plot each metric, enumerated starting from 1 (y=1, y=2, etc.)
+    for i, metric in enumerate(metrics_list, start=1):
+        # Retrieve the list of (language, delta) for this metric
+        lang_delta_pairs = metric_to_values[metric]
+        # For each pair, plot a dot at (delta, i)
+        for (lang, cliffs_delta) in lang_delta_pairs:
+            color = language_to_color[lang]
+            plt.scatter(cliffs_delta, i, color=color, s=60)
+
+    # Add vertical bars at specified x values
+    for x_val in [0.14, 0.33, 0.47, -0.14, -0.33, -0.47]:
+        plt.axvline(x=x_val, color='gray', linestyle='--', linewidth=1)
+
+    # Create a legend by plotting an "invisible" point for each language
+    for lang in languages:
+        plt.scatter([], [], color=language_to_color[lang], s=60, label=lang)
+    plt.legend(title="Language", bbox_to_anchor=(1.05, 1.0), loc='upper left')
+
+    # Configure the y-axis ticks (one tick per metric)
+    plt.yticks(range(1, len(metrics_list) + 1), metrics_list)
+
+    # Set x-axis limits from -1 to 1 and custom x-ticks
+    plt.xlim(-1, 1)
+    plt.xticks([-1, -0.75, -0.47, -0.33, -0.14, 0, 0.14, 0.33, 0.47, 0.75, 1])
+
+    # Labeling and title
+    plt.xlabel("Cliff's Delta")
+    plt.ylabel("Metrics")
+    plt.title("Spread of Cliff's Delta by Language and Metric")
+
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     # calculate_number_of_function_domain()
     # validate_anova_runs()
-    validate_art_runs()
+    # validate_art_runs()
+    validate_interaction_deviations()
 
     # session = init_local_session()
     # # model = fasttext.load_model("build/models/ft_19M_100x1000_5ws.bin")

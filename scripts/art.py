@@ -13,7 +13,7 @@ from scipy.stats import rankdata, chi2
 from itertools import combinations
 from scipy.stats import rankdata
 from multiprocessing import Process
-from db.models import Function, ARTRun, ANOVARun
+from db.models import Function, ARTRun, ANOVARun, MannWhitneyu
 from db.utils import init_local_session
 from rich.console import Console
 from patsy.contrasts import Sum
@@ -94,20 +94,20 @@ class AlignedRankTransform:
   @staticmethod
   def execute():
     METRICS = [
-      "median_id_length", 
-      "median_id_soft_word_count",
-      "id_duplicate_percentage",
-      "num_single_letter_ids",
-      "id_percent_abbreviations",
-      "id_percent_dictionary_words",
-      "num_conciseness_violations",
-      "num_consistency_violations",
-      "term_entropy",
-      "median_id_lv_dist",
-      "median_id_semantic_similarity",
-      "median_word_concreteness",
-      "context_coverage",
-      # grammar
+      # "median_id_length", 
+      # "median_id_soft_word_count",
+      # "id_duplicate_percentage",
+      # "num_single_letter_ids",
+      # "id_percent_abbreviations",
+      # "id_percent_dictionary_words",
+      # "num_conciseness_violations",
+      # "num_consistency_violations",
+      # "term_entropy",
+      # "median_id_lv_dist",
+      # "median_id_semantic_similarity",
+      # "median_word_concreteness",
+      # "context_coverage",
+      "grammar_hash"
     ]
 
     langs = ["c", "clojure", "elixir", "erlang", "haskell", "java", "javascript", "ocaml", "python"]
@@ -122,90 +122,92 @@ class AlignedRankTransform:
     for _ in range(10):
       for per_lang_limit in reversed([6300, 8400, 10600]):
         for metric in METRICS:
-          AlignedRankTransform._perform_art(langs, domains, metric, per_lang_limit)
+          # AlignedRankTransform._perform('art', langs, domains, metric, per_lang_limit)
+          AlignedRankTransform._perform('anova', langs, domains, metric, per_lang_limit)
 
-    # # Random domain combinations
-    # def generate_domain_subsets(domains, min_size):
-    #     subsets = []
-    #     # for size in range(min_size, len(domains) + 1):
-    #     subsets.extend(combinations(domains, min_size))
-    #     return subsets
+    # langs = ["c", "clojure", "elixir", "erlang", "haskell", "fortran", "java", "javascript", "ocaml", "python"]
+    # domains = ["ml", "infr", "db", "struct", "edu", "lang", "frontend", "backend", "build", "code", "cli", "comp", "game"]
 
-    # processes = []
-    # domain_subsets = generate_domain_subsets(domains, 3)
-    # metric = "term_entropy"
+    # for _ in range(30):
+    #   for metric in METRICS:
+    #     AlignedRankTransform._perform('interaction_deviations', langs, [domains], metric, 10600)
 
-    # for i in range(NUM_PROCESSES):
-    #     chunk = domain_subsets[i::NUM_PROCESSES]
-    #     p = Process(target=AlignedRankTransform._perform_art, args=(langs, chunk, metric, per_lang_limit))
-    #     p.start()
-    #     processes.append(p)
-
-    # for p in processes:
-    #     p.join()
 
   @staticmethod
-  def _perform_art(langs, domains_subset, metric, per_lang_limit):
+  def _perform(test, langs, domains_subset, metric, per_lang_limit):
     console.print(f"Performing ART for {metric}, domains: {domains_subset}, with {per_lang_limit} examples per language")
     session = init_local_session()
 
-    # ART
-    # for domains in domains_subset:
-    #   metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
-    #   result = AlignedRankTransform._execute_art(metric_values)
+    if test == 'art':
+      for domains in domains_subset:
+        metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
+        results = AlignedRankTransform._execute_art(metric_values)
 
-    #   run = ARTRun(
-    #     metric=metric,
-    #     langs=" ".join(langs),
-    #     domains=" ".join(domains),
-    #     max_samples=per_lang_limit,
-    #     lang_fval=result["lang_fval"],
-    #     lang_p=result["lang_p"],
-    #     lang_df=result["lang_df"],
-    #     domain_fval=result["domain_fval"],
-    #     domain_p=result["domain_p"],
-    #     domain_df=result["domain_df"],
-    #     interact_fval=result["interact_fval"],
-    #     interact_p=result["interact_p"],
-    #     interact_df=result["interact_df"],
-    #   )
-    #   session.add(run)
-    #   session.commit()
+        run = ARTRun(
+          metric=metric,
+          langs=" ".join(langs),
+          domains=" ".join(domains),
+          max_samples=per_lang_limit,
+          lang_fval=result["lang_fval"],
+          lang_p=result["lang_p"],
+          lang_df=result["lang_df"],
+          domain_fval=result["domain_fval"],
+          domain_p=result["domain_p"],
+          domain_df=result["domain_df"],
+          interact_fval=result["interact_fval"],
+          interact_p=result["interact_p"],
+          interact_df=result["interact_df"],
+        )
+        session.add(run)
+        session.commit()
+    
+    if test == 'interaction_deviations':
+      for domains in domains_subset:
+        metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
+        results = AlignedRankTransform._identify_deviant_languages(metric_values)
 
-    for domains in domains_subset:
-      metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
-      result = AlignedRankTransform.identify_interaction_deviations(metric_values)
-      AlignedRankTransform.interpret_interaction_deviations(result)
+        for result in results:
+          run = MannWhitneyu(
+              metric=metric,
+              max_samples=per_lang_limit,
+              language=result['language'],
+              p_value=result['p_value'],
+              adj_p_value=result['adj_p_value'],
+              cliffs_delta=result['cliffs_delta'],
+              median_diff=result['median_diff'],
+              n_obs=result['n_obs'],
+              overall_median=result['overall_median']
+          )
+          session.add(run)
 
-    return
+        session.commit()
 
-    # Classic ANOVA
-    for domains in domains_subset:
-      type_ = 3
-      metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
-      result = AlignedRankTransform._execute_anova(metric_values, type_)
+    if test == 'anova':
+      for domains in domains_subset:
+        metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
+        result = AlignedRankTransform._execute_anova(metric_values, 3)
 
-      run = ANOVARun(
-        metric=metric,
-        langs=" ".join(langs),
-        domains=" ".join(domains),
-        typ=5,
-        max_samples=per_lang_limit,
-        lang_fval=result["lang_fval"],
-        lang_p=result["lang_p"],
-        lang_df=result["lang_df"],
-        lang_es=result["lang_es"],
-        domain_fval=result["domain_fval"],
-        domain_p=result["domain_p"],
-        domain_df=result["domain_df"],
-        domain_es=result["domain_es"],
-        interact_fval=result["interact_fval"],
-        interact_p=result["interact_p"],
-        interact_df=result["interact_df"],
-        interact_es=result["interact_es"],
-      )
-      session.add(run)
-      session.commit()
+        run = ANOVARun(
+          metric=metric,
+          langs=" ".join(langs),
+          domains=" ".join(domains),
+          typ=4,
+          max_samples=per_lang_limit,
+          lang_fval=result["lang_fval"],
+          lang_p=result["lang_p"],
+          lang_df=result["lang_df"],
+          lang_es=result["lang_es"],
+          domain_fval=result["domain_fval"],
+          domain_p=result["domain_p"],
+          domain_df=result["domain_df"],
+          domain_es=result["domain_es"],
+          interact_fval=result["interact_fval"],
+          interact_p=result["interact_p"],
+          interact_df=result["interact_df"],
+          interact_es=result["interact_es"],
+        )
+        session.add(run)
+        session.commit()
 
   @staticmethod
   def _execute_anova(metric_values, typ):
@@ -288,75 +290,6 @@ class AlignedRankTransform:
 
     return results    
 
-  @staticmethod
-  def _identify_deviant_languages(metric_values, alpha=0.05):
-    """
-    Identifies languages deviating most from the overall average using:
-    - Rank transformation for non-parametric analysis
-    - Mann-Whitney U tests vs combined other languages
-    - Cliff's delta effect sizes
-    - Holm-Bonferroni correction
-    
-    Returns sorted list of languages by deviation magnitude.
-    """
-    # Create DataFrame with ranked data
-    df = pd.DataFrame({
-        'Language': [mv[1] for mv in metric_values],
-        'Metric': [mv[0] for mv in metric_values]
-    })
-    
-    # Rank across entire dataset (aligns with previous analyses)
-    df['Ranked'] = rankdata(df['Metric'])
-    
-    # Get unique languages
-    languages = df['Language'].unique()
-    
-    results = []
-    for lang in languages:
-        # Split into target vs all others
-        mask = df['Language'] == lang
-        target_ranks = df[mask]['Ranked']
-        other_ranks = df[~mask]['Ranked']
-        
-        # Skip small samples (<10 observations)
-        if len(target_ranks) < 10:
-            continue
-            
-        # Mann-Whitney U test
-        u_stat, p_val = mannwhitneyu(target_ranks, other_ranks, 
-                                   alternative='two-sided')
-        
-        # Cliff's delta calculation
-        n1, n2 = len(target_ranks), len(other_ranks)
-        cliff_delta = (2 * u_stat / (n1 * n2)) - 1  # [-1, 1]
-        
-        # Relative median difference (for practical interpretation)
-        target_median = np.median(df[mask]['Metric'])
-        overall_median = np.median(df['Metric'])
-        median_diff = target_median - overall_median
-        
-        results.append({
-            'language': lang,
-            'p_value': p_val,
-            'cliffs_delta': cliff_delta,
-            'median_diff': median_diff,
-            'n_obs': len(target_ranks),
-            'overall_median': overall_median
-        })
-    
-    # Multiple comparisons adjustment
-    p_values = [res['p_value'] for res in results]
-    reject, adj_p_values, _, _ = multipletests(p_values, alpha=alpha, method='holm')
-    
-    # Add adjusted p-values and significance
-    for i, res in enumerate(results):
-        res['adj_p_value'] = adj_p_values[i]
-        res['significant'] = adj_p_values[i] < alpha
-    
-    # Sort by absolute effect size (most deviant first)
-    results.sort(key=lambda x: abs(x['cliffs_delta']), reverse=True)
-    
-    return results
 
   @staticmethod
   def _interpret_deviant_languages(results, alpha=0.05, top_n=10):
@@ -385,7 +318,7 @@ class AlignedRankTransform:
                   f"(δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
 
   @staticmethod
-  def identify_interaction_deviations(metric_values, alpha=0.05, min_sample=10):
+  def _test_interaction_deviations(metric_values, alpha=0.05, min_sample=10):
     """
     Identifies exceptional (language, domain) combinations using:
     - Rank transformation for non-parametric analysis
@@ -486,76 +419,6 @@ class AlignedRankTransform:
             print(f"- {res['combination']}: {direction} average by {abs(res['median_diff']):.2f} "
                   f"(δ={res['cliffs_delta']:.2f}, p={res['adj_p_value']:.4f})")
 
-  # @staticmethod
-  # def _execute_anova(metric_values, typ):
-  #   """
-  #   metric_values: a list of (value, language, domain) tuples.
-  #   Example: [(3.4, 'Python', 'Web'), (2.1, 'Java', 'ML'), ...]
-
-  #   Returns:
-  #      A dictionary with an ANOVA table (typ=2) from the
-  #      rank-transformed data, plus partial effect sizes.
-  #   """
-
-  #   # Unpack the metric_values into separate lists
-  #   values = [mv[0] for mv in metric_values]
-  #   languages = [mv[1] for mv in metric_values]
-  #   domains = [mv[2] for mv in metric_values]
-
-  #   # Create DataFrame
-  #   df = pd.DataFrame({
-  #       'Subject': range(len(values)),
-  #       'Language': languages,
-  #       'Domain': domains,
-  #       'Metric': values,
-  #   })
-
-  #   # ------------------------------------------------
-  #   # 1) Rank the Metric *once* across the entire dataset
-  #   # ------------------------------------------------
-  #   df['Ranked'] = rankdata(df['Metric'])
-
-  #   # ------------------------------------------------
-  #   # 2) Fit a standard two-way ANOVA on the ranks
-  #   # ------------------------------------------------
-  #   # Model formula includes main effects + interaction
-  #   # so we can see if there's a significant Language*Domain effect as well.
-  #   model = smf.ols("Ranked ~ C(Language, Sum)*C(Domain, Sum)", data=df).fit()
-  #   anova_table = sm.stats.anova_lm(model, typ=typ)
-
-  #   # ------------------------------------------------
-  #   # 3) Calculate a partial effect size for each factor
-  #   #    (e.g., rank-based partial eta^2 or epsilon^2)
-  #   # ------------------------------------------------
-  #   # We'll do the usual ratio: SS_effect / (SS_effect + SS_residual)
-  #   # from the single unified model
-  #   ss_res = anova_table.loc["Residual", "sum_sq"]
-
-  #   effect_sizes = {}
-  #   for factor in ["C(Language, Sum)", "C(Domain, Sum)", "C(Language, Sum):C(Domain, Sum)"]:
-  #       ss_factor = anova_table.loc[factor, "sum_sq"]
-  #       effect_sizes[factor] = ss_factor / (ss_factor + ss_res)
-
-  #   results = {
-  #       "lang_p": anova_table.loc['C(Language, Sum)', 'PR(>F)'],
-  #       "domain_p": anova_table.loc['C(Domain, Sum)', 'PR(>F)'],
-  #       "interact_p": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'PR(>F)'],
-
-  #       "lang_df": anova_table.loc['C(Language, Sum)', 'df'],
-  #       "domain_df": anova_table.loc['C(Domain, Sum)', 'df'],
-  #       "interact_df": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'df'],
-
-  #       "lang_fval": anova_table.loc['C(Language, Sum)', 'F'],
-  #       "domain_fval": anova_table.loc['C(Domain, Sum)', 'F'],
-  #       "interact_fval": anova_table.loc['C(Language, Sum):C(Domain, Sum)', 'F'],
-
-  #       "lang_es": effect_sizes['C(Language, Sum)'],
-  #       "domain_es": effect_sizes['C(Domain, Sum)'],
-  #       "interact_es": effect_sizes['C(Language, Sum):C(Domain, Sum)'],
-  #   }
-  #   print(results)
-  #   return results
-
   @staticmethod
   def _execute_art(metric_values):
       """
@@ -641,3 +504,72 @@ class AlignedRankTransform:
           "interact_df": interact_df,
           "interact_p": interact_p,
       }
+
+  @staticmethod
+  def _identify_deviant_languages(metric_values, alpha=0.05, min_sample=10):
+    """
+    Identifies languages deviating most from the overall pattern (across all domains) using:
+    - Rank transformation
+    - Mann-Whitney U tests (language vs all others)
+    - Cliff's delta effect sizes
+    - Holm-Bonferroni correction
+    """
+    # Create DataFrame with ranked data
+    df = pd.DataFrame({
+        'Language': [mv[1] for mv in metric_values],
+        'Metric': [mv[0] for mv in metric_values]
+    })
+    
+    # Rank across entire dataset (aligned with previous ANOVA)
+    df['Ranked'] = rankdata(df['Metric'])
+    
+    # Get unique languages
+    languages = df['Language'].unique()
+    
+    results = []
+    for lang in languages:
+        # Split into target vs all others (regardless of domain)
+        target_mask = df['Language'] == lang
+        target_group = df[target_mask]
+        other_groups = df[~target_mask]
+        
+        # Skip small samples
+        if len(target_group) < min_sample:
+            continue
+            
+        # Mann-Whitney U test
+        u_stat, p_val = mannwhitneyu(target_group['Ranked'], 
+                                   other_groups['Ranked'],
+                                   alternative='two-sided')
+        
+        # Cliff's delta
+        n1, n2 = len(target_group), len(other_groups)
+        cliff_delta = (2 * u_stat / (n1 * n2)) - 1
+        
+        # Practical difference metrics
+        target_median = np.median(target_group['Metric'])
+        overall_median = np.median(df['Metric'])
+        median_diff = target_median - overall_median
+        
+        results.append({
+            'language': lang,
+            'p_value': p_val,
+            'cliffs_delta': cliff_delta,
+            'median_diff': median_diff,
+            'n_obs': len(target_group),
+            'overall_median': overall_median
+        })
+    
+    # Multiple comparisons adjustment
+    p_values = [res['p_value'] for res in results]
+    reject, adj_p_values, _, _ = multipletests(p_values, alpha=alpha, method='holm')
+    
+    # Add adjusted p-values and significance
+    for i, res in enumerate(results):
+        res['adj_p_value'] = adj_p_values[i]
+        res['significant'] = adj_p_values[i] < alpha
+    
+    # Sort by absolute effect size
+    results.sort(key=lambda x: abs(x['cliffs_delta']), reverse=True)
+    
+    return results
