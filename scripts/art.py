@@ -125,13 +125,6 @@ class AlignedRankTransform:
           AlignedRankTransform._perform('art', langs, domains, metric, per_lang_limit)
           # AlignedRankTransform._perform('anova', langs, domains, metric, per_lang_limit)
 
-    # langs = ["c", "clojure", "elixir", "erlang", "haskell", "fortran", "java", "javascript", "ocaml", "python"]
-    # domains = ["ml", "infr", "db", "struct", "edu", "lang", "frontend", "backend", "build", "code", "cli", "comp", "game"]
-
-    # for _ in range(30):
-    #   for metric in METRICS:
-    #     AlignedRankTransform._perform('interaction_deviations', langs, [domains], metric, 10600)
-
 
   @staticmethod
   def _perform(test, langs, domains_subset, metric, per_lang_limit):
