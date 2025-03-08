@@ -46,7 +46,7 @@ def all_pairs(strings):
 
 
 def calculate_number_of_function_domain():
-    metric = "context_coverage"
+    metric = "median_id_length"
     session = init_local_session()
 
     lang_to_dict = {}
@@ -72,17 +72,12 @@ def calculate_number_of_function_domain():
     ]
 
     for lang in LANGS:
-        functions_by_domain = defaultdict(lambda: 0)
+        repos_by_domain = defaultdict(lambda: 0)
 
         for repo in Repo.all(session, lang=lang, selected=True):
-            functions = Function.filter_by(session, repo_id=repo.id)
+            repos_by_domain[repo.ntype] += 1
 
-            for function in functions:
-                print(function.name)
-                if getattr(function, metric, None) is not None:
-                    functions_by_domain[function.domain] += 1
-
-        lang_to_dict[lang] = functions_by_domain
+        lang_to_dict[lang] = repos_by_domain
 
     min_value = 1000000
     for domain in domains:
@@ -91,10 +86,7 @@ def calculate_number_of_function_domain():
             value = lang_to_dict[lang][domain]
             min_value = min(min_value, value)
 
-            if value > 3000:
-                values.append(str(value))
-            else:
-                values.append(f"\\underline{{{value}}}")
+            values.append(str(value))
 
         console.print(f"{domain} & " + ' & '.join(values) + " \\\\")
 
@@ -133,19 +125,19 @@ def validate_anova_runs():
     session = init_local_session()
 
     METRICS = [
-      "median_id_length", 
-      "median_id_soft_word_count",
-      "id_duplicate_percentage",
-      "num_single_letter_ids",
-      "id_percent_abbreviations",
-      "id_percent_dictionary_words",
-      "num_conciseness_violations",
-      "num_consistency_violations",
-      "term_entropy",
-      "median_id_lv_dist",
-      "median_id_semantic_similarity",
-      "median_word_concreteness",
-      "context_coverage",
+    #   "median_id_length", 
+    #   "median_id_soft_word_count",
+    #   "id_duplicate_percentage",
+    #   "num_single_letter_ids",
+    #   "id_percent_abbreviations",
+    #   "id_percent_dictionary_words",
+    #   "num_conciseness_violations",
+    #   "num_consistency_violations",
+    #   "term_entropy",
+    #   "median_id_lv_dist",
+    #   "median_id_semantic_similarity",
+    #   "median_word_concreteness",
+    #   "context_coverage",
       "grammar_hash"
     ]
 
@@ -224,19 +216,19 @@ def validate_art_runs():
     session = init_local_session()
 
     METRICS = [
-      "median_id_length", 
-      "median_id_soft_word_count",
-      "id_duplicate_percentage",
-      "num_single_letter_ids",
-      "id_percent_abbreviations",
-      "id_percent_dictionary_words",
-      "num_conciseness_violations",
-      "num_consistency_violations",
-      "term_entropy",
-      "median_id_lv_dist",
-      "median_id_semantic_similarity",
-      "median_word_concreteness",
-      "context_coverage",
+    #   "median_id_length", 
+    #   "median_id_soft_word_count",
+    #   "id_duplicate_percentage",
+    #   "num_single_letter_ids",
+    #   "id_percent_abbreviations",
+    #   "id_percent_dictionary_words",
+    #   "num_conciseness_violations",
+    #   "num_consistency_violations",
+    #   "term_entropy",
+    #   "median_id_lv_dist",
+    #   "median_id_semantic_similarity",
+    #   "median_word_concreteness",
+    #   "context_coverage",
       "grammar_hash"
     ]
     for metric in METRICS:
@@ -403,8 +395,8 @@ def plot_cliffs_spread(metric_to_values):
 if __name__ == "__main__":
     # calculate_number_of_function_domain()
     # validate_anova_runs()
-    # validate_art_runs()
-    validate_interaction_deviations()
+    validate_art_runs()
+    # validate_interaction_deviations()
 
     # session = init_local_session()
     # # model = fasttext.load_model("build/models/ft_19M_100x1000_5ws.bin")

@@ -122,8 +122,8 @@ class AlignedRankTransform:
     for _ in range(10):
       for per_lang_limit in reversed([6300, 8400, 10600]):
         for metric in METRICS:
-          # AlignedRankTransform._perform('art', langs, domains, metric, per_lang_limit)
-          AlignedRankTransform._perform('anova', langs, domains, metric, per_lang_limit)
+          AlignedRankTransform._perform('art', langs, domains, metric, per_lang_limit)
+          # AlignedRankTransform._perform('anova', langs, domains, metric, per_lang_limit)
 
     # langs = ["c", "clojure", "elixir", "erlang", "haskell", "fortran", "java", "javascript", "ocaml", "python"]
     # domains = ["ml", "infr", "db", "struct", "edu", "lang", "frontend", "backend", "build", "code", "cli", "comp", "game"]
@@ -141,7 +141,7 @@ class AlignedRankTransform:
     if test == 'art':
       for domains in domains_subset:
         metric_values = Function.get_metrics_with_labels(session, langs=langs, limit=per_lang_limit, metric=metric, domains=domains)
-        results = AlignedRankTransform._execute_art(metric_values)
+        result = AlignedRankTransform._execute_art(metric_values)
 
         run = ARTRun(
           metric=metric,
